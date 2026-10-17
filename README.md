@@ -2,10 +2,6 @@
 
 A terminal-based network scanner written in Go. Scan TCP and UDP ports, and identify services.
 
-- Configurable concurrency, rate limits, timeouts, and retries
-- HTTP, HTTPS, SSH, and TLS identification
-- IPv4, IPv6, CIDRs, and hostnames
-
 ## Quick start
 
 Requires Go 1.26 or newer.
