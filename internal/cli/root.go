@@ -59,6 +59,7 @@ func NewCommand(version string) *cobra.Command {
 	flags.Int("udp-host-rate", defaults.UDP.HostRate, "Maximum UDP attempts per host per second (1-1000000)")
 	flags.Int("udp-max-bytes", defaults.UDP.MaxBytes, "Maximum accepted UDP response size (48-65535 bytes)")
 	flags.StringP("ports", "p", defaults.Scan.Ports, "Ports and inclusive ranges, e.g. 22,80,8000-8010")
+	flags.Int("top-ports", defaults.Scan.TopPorts, "TCP common-port preset: 10, 100, or 1000 (0 disables; alternative to --ports)")
 	flags.Int("concurrency", defaults.Scan.Concurrency, "Maximum in-flight probes (1-65535)")
 	flags.Int("rate", defaults.Scan.Rate, "Maximum probe starts per second, including TCP identification (1-1000000)")
 	flags.Duration("timeout", defaults.Scan.Timeout, "Per-attempt timeout, greater than zero and at most 1m")

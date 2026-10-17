@@ -2,6 +2,7 @@
 scan:
   transport: tcp
   ports: "22,80,443"
+  top_ports: 0
   concurrency: 128
   rate: 200
   timeout: 1s

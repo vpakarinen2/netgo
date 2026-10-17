@@ -8,6 +8,7 @@ Choose UDP explicitly and provide the ports you want to probe:
 
 UDP uses ordinary sockets and needs no elevated privileges. The default port
 list remains `22,80,443`, so always specify appropriate UDP ports.
+`--top-ports` presets are TCP-only.
 
 ## Choosing a probe
 

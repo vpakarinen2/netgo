@@ -48,9 +48,23 @@ DNS lookup errors stop the scan before port probing begins.
 
 ## Useful options
 
+Choose a common TCP port preset instead of listing ports:
+
+```sh
+./bin/scan localhost --top-ports 10
+./bin/scan localhost --top-ports 100
+./bin/scan localhost --top-ports 1000 --service
+```
+
+These are fixed common-port lists, not ports 1–100 or live popularity rankings.
+The default stays `22,80,443`. Presets are TCP-only; use `--ports` for UDP.
+The 100/1000 lists come from Naabu; the 10-port quick preset is a Netgo selection.
+See [source and license notices](../THIRD_PARTY_NOTICES.md).
+
 | Option | Purpose | Default |
 | --- | --- | --- |
 | `-p`, `--ports` | Comma-separated ports and ranges | `22,80,443` |
+| `--top-ports` | Common TCP ports: `10`, `100`, or `1000` | `0` (disabled) |
 | `--transport` | Select `tcp` or `udp` | `tcp` |
 | `--service` | Identify services on open TCP ports | Off |
 | `--rate` | Maximum probe starts per second, including service connections | `200` |
@@ -74,6 +88,12 @@ Settings are applied in this order, highest priority first:
 2. Environment variables starting with `NETGO_`.
 3. A YAML file selected with `--config`.
 4. Built-in [defaults](../configs/default.yaml).
+
+Port selection follows the same priority: an explicit `--ports` replaces an
+inherited preset, and `--top-ports` replaces an inherited port list. At the same
+level, set only one selector. Use `scan.top_ports` in YAML or
+`NETGO_SCAN_TOP_PORTS` in the environment; `0` disables the preset.
+`--check-config` includes the expanded port list.
 
 For environment variables, uppercase the YAML section and key and join them
 with underscores: `scan.timeout` becomes `NETGO_SCAN_TIMEOUT`.

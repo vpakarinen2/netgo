@@ -36,6 +36,11 @@ On Windows, replace `./bin/scan` with `.\bin\scan.exe`.
 # Basic TCP scan with explicit ports
 ./bin/scan localhost -p 80,443,8080
 
+# Common TCP port presets
+./bin/scan localhost --top-ports 10
+./bin/scan localhost --top-ports 100
+./bin/scan localhost --top-ports 1000
+
 # Identify services
 ./bin/scan localhost -p 22,80,443 --service
 

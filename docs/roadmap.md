@@ -3,6 +3,7 @@
 ## Available now
 
 - TCP connect scanning for IPv4, IPv6, CIDRs, and hostnames.
+- Common TCP port presets: top 10, 100, and 1,000.
 - UDP probes for DNS, NTP, and generic responses.
 - HTTP, HTTPS, SSH, and TLS service identification.
 - Concurrency limits, global/per-host pacing for UDP, timeouts, and retries.

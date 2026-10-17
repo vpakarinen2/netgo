@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +30,7 @@ type Config struct {
 type Scan struct {
 	Transport   string        `mapstructure:"transport" json:"transport"`
 	Ports       string        `mapstructure:"ports" json:"ports"`
+	TopPorts    int           `mapstructure:"top_ports" json:"top_ports"`
 	Concurrency int           `mapstructure:"concurrency" json:"concurrency"`
 	Rate        int           `mapstructure:"rate" json:"rate"`
 	Timeout     time.Duration `mapstructure:"timeout" json:"-"`
@@ -69,6 +71,7 @@ var bindings = []struct{ key, flag string }{
 	{"udp.host_rate", "udp-host-rate"},
 	{"udp.max_bytes", "udp-max-bytes"},
 	{"scan.ports", "ports"},
+	{"scan.top_ports", "top-ports"},
 	{"scan.concurrency", "concurrency"},
 	{"scan.rate", "rate"},
 	{"scan.timeout", "timeout"},
@@ -111,6 +114,7 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	if err := v.ReadConfig(strings.NewReader(configs.Defaults)); err != nil {
 		return Config{}, fmt.Errorf("read embedded defaults: %w", err)
 	}
+	portsPriority, topPriority := 0, 0
 	if path != "" {
 		file := viper.New()
 		file.SetConfigFile(path)
@@ -124,11 +128,23 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 		if err := file.UnmarshalExact(&shape); err != nil {
 			return Config{}, fmt.Errorf("decode config %q: %w", path, err)
 		}
+		if file.IsSet("scan.ports") {
+			portsPriority = 1
+		}
+		if file.IsSet("scan.top_ports") {
+			topPriority = 1
+		}
 		if err := v.MergeConfigMap(file.AllSettings()); err != nil {
 			return Config{}, fmt.Errorf("merge config: %w", err)
 		}
 	}
 	if environment {
+		if _, ok := os.LookupEnv("NETGO_SCAN_PORTS"); ok {
+			portsPriority = 2
+		}
+		if _, ok := os.LookupEnv("NETGO_SCAN_TOP_PORTS"); ok {
+			topPriority = 2
+		}
 		v.SetEnvPrefix("NETGO")
 		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 		v.AutomaticEnv()
@@ -147,6 +163,14 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	}
 	var cfg Config
 	var err error
+	if flags != nil {
+		if flags.Changed("ports") {
+			portsPriority = 3
+		}
+		if flags.Changed("top-ports") {
+			topPriority = 3
+		}
+	}
 	if cfg.Scan.Transport, err = stringValue(v, "scan.transport"); err != nil {
 		return Config{}, err
 	}
@@ -161,6 +185,11 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	}
 	if cfg.Scan.Ports, err = stringValue(v, "scan.ports"); err != nil {
 		return Config{}, err
+	}
+	if topPriority >= portsPriority {
+		if cfg.Scan.TopPorts, err = intValue(v, "scan.top_ports"); err != nil {
+			return Config{}, err
+		}
 	}
 	if cfg.Scan.Concurrency, err = intValue(v, "scan.concurrency"); err != nil {
 		return Config{}, err
@@ -225,6 +254,9 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	if cfg.Service.Timeout, err = time.ParseDuration(serviceTimeout); err != nil {
 		return Config{}, fmt.Errorf("service.timeout: %w", err)
 	}
+	if err := cfg.selectPorts(portsPriority, topPriority); err != nil {
+		return Config{}, err
+	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
@@ -234,6 +266,14 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 // Validate checks the effective configuration before any network work begins.
 func (c Config) Validate() error {
 	var problems []error
+	if c.Scan.TopPorts != 0 {
+		if _, err := targets.TopPorts(c.Scan.TopPorts); err != nil {
+			problems = append(problems, fmt.Errorf("scan.top_ports: %w", err))
+		}
+		if c.Scan.Transport != "tcp" {
+			problems = append(problems, errors.New("scan.top_ports supports TCP only; use --ports for UDP"))
+		}
+	}
 	if c.Scan.Transport != "tcp" && c.Scan.Transport != "udp" {
 		problems = append(problems, errors.New("scan.transport must be tcp or udp"))
 	}

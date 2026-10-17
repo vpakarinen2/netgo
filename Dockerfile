@@ -10,6 +10,7 @@ RUN CGO_ENABLED=0 go build -mod=readonly -trimpath \
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /out/scan /scan
+COPY LICENSE THIRD_PARTY_NOTICES.md /licenses/
 USER 65532:65532
 ENTRYPOINT ["/scan"]
 CMD ["--help"]

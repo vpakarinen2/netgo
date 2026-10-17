@@ -46,6 +46,7 @@ func testFlags() *pflag.FlagSet {
 	f.Int("udp-host-rate", d.UDP.HostRate, "")
 	f.Int("udp-max-bytes", d.UDP.MaxBytes, "")
 	f.String("ports", d.Scan.Ports, "")
+	f.Int("top-ports", d.Scan.TopPorts, "")
 	f.Int("concurrency", d.Scan.Concurrency, "")
 	f.Int("rate", d.Scan.Rate, "")
 	f.Duration("timeout", d.Scan.Timeout, "")
