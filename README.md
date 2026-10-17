@@ -51,7 +51,7 @@ Run `./bin/scan --help` for all options.
 
 ## Documentation
 
-[Usage & configuration](docs/usage.md) ·
+[Usage](docs/usage.md) ·
 [Service identification](docs/service-identification.md) ·
 [UDP scanning](docs/udp.md) ·
 [Output format](docs/output-schema.md) ·
