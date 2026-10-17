@@ -1,79 +1,58 @@
 # Service identification
 
-This guide describes TCP inspection. [UDP protocol matching](udp.md) is built
-into its probes and does not use the `--service` stage.
+Add `--service` to identify services on open TCP ports:
 
-Enable with `--service`. Default TCP scans send no service payloads. Inspection
-is best-effort evidence collection after a port was observed open; failures do
-not change its state, observation timestamp, duration, or port attempt count.
+```sh
+./bin/scan localhost -p 22,80,443 --service
+```
 
-## Probe sequence
+Netgo recognizes HTTP, HTTPS, SSH, and TLS. Detection uses responses and
+negotiated protocols; an open port alone does not identify its service.
+[UDP detection](udp.md) is automatic and does not use `--service`.
 
-1. Open a new connection and read a banner. The read window is the smaller of
-   200 ms and one quarter of the total inspection budget, bounded by the overall
-   deadline. SSH banners and complete HTTP/1 headers are matched by embedded YAML
-   definitions. A nonempty unrecognized banner is retained without further probes.
-2. If silent and active mode is enabled, open a new connection and send a TLS
-   ClientHello. Offer ALPN `h2` and `http/1.1`; allow TLS 1.2 and 1.3. Retain
-   protocol/cipher, selected ALPN, SNI, and leaf certificate observations.
-3. If TLS succeeds and selects `h2`, record HTTPS with ALPN evidence and send no
-   application request. Otherwise, send `HEAD / HTTP/1.1` on the TLS connection.
-   A valid HTTP response identifies HTTPS; failed HTTP identification preserves
-   the generic TLS identity and certificate information.
-4. If TLS fails, open a final plaintext connection and send `HEAD / HTTP/1.1`.
-   Match a complete HTTP/1 header block. No redirects are followed and no body
-   is deliberately read; a bounded final read may include a body prefix.
+## How it works
 
-TLS and plaintext HTTP stages each have a deadline of the smaller of one second
-and one third of `--service-timeout`. The overall per-port budget also bounds
-the first dial, rate waits, and all stages. No retry loops are used. Increasing
-the total budget does not increase the one-second active-stage ceilings.
+1. Read a server banner, such as an SSH greeting.
+2. If the server is silent, try TLS and inspect its certificate.
+3. Try an HTTP `HEAD /` request over TLS, or plaintext if TLS fails.
 
-`--service-active=false` stops after banner acquisition and sends no application
-payload. It still opens one additional TCP connection. Client-first protocols
-usually time out in this mode. The server-name override and other service
-settings take effect only when service identification is enabled.
+An unrecognized nonempty banner is saved without further probing. HTTP redirects
+are not followed. When TLS negotiates HTTP/2, Netgo records HTTPS without sending
+an HTTP/2 request.
 
-## Bounds and scheduling
+Identification can open up to three extra connections per open port. These share
+`--rate` with port scans. Identification failures leave the port's `open` result
+unchanged, and there are no service retries.
 
-- Default inspection concurrency is 16, configurable from 1 to 256. Port workers
-  remain independent; bounded queues propagate backpressure when saturated.
-- Every dial waits on the same `--rate` limiter as port attempts. At most three
-  additional dials occur per open port. Rate waits consume the inspection budget.
-- Default banner/HTTP byte cap is 8192, configurable from 256 to 65536 per read
-  phase. Unknown data is retained up to this cap; invalid UTF-8 uses base64.
-- TLS wire input is capped at 256 KiB across handshake and any encrypted HTTP
-  response, independently of the application read cap. This can reject very
-  large certificate chains. Peer certificate chains are not retained in results.
-- Leaf subject/issuer strings are capped at 512 bytes, serial at 128 bytes, and
-  error strings at 512 bytes. At most 32 DNS SANs (253 bytes each) and 32 IP SANs
-  are retained; `names_omitted` counts additional names.
-- Sockets have deadlines and close when the inspection context is canceled.
-  Completed port results still flow to output when identification is canceled.
+## Options
 
-## TLS interpretation
+| Option | Purpose | Default |
+| --- | --- | --- |
+| `--service-active=false` | Only read banners; skip TLS and HTTP requests | Active probes enabled |
+| `--service-timeout` | Total time per inspection, including rate waits | `3s` |
+| `--service-concurrency` | Concurrent inspections | `16` |
+| `--service-max-bytes` | Banner/HTTP bytes retained per read phase | `8192` |
+| `--sni` | Override the TLS server name and HTTP Host | Target hostname |
 
-Inspection accepts untrusted certificates to collect evidence from self-signed,
-expired, and mismatched endpoints. It does not build or validate a trust chain,
-fetch issuers, perform revocation checks, or send client certificates.
-`certificate_verification` is always `not_performed`. Offline hostname matching
-and current-time validity are separate observations, not proof of trust.
+```sh
+./bin/scan localhost -p 22 --service --service-active=false
+./bin/scan 127.0.0.1 -p 8443 --service --sni example.test
+```
 
-For hostname targets, SNI and HTTP Host use the retained hostname. For an IP
-target, SNI is omitted and hostname verification checks the IP SAN. `--sni`
-accepts a DNS hostname and overrides SNI, certificate reference name, and HTTP
-Host, while dialing the original resolved IP. HTTP Host includes the target port.
-ALPN `h2` is negotiated protocol evidence; this release does not issue HTTP/2
-requests or extract HTTP/2 Server headers.
+Low rate limits can use up the inspection timeout before probing finishes.
+Individual active stages are capped at one second, even with a longer total timeout.
 
-Useful protocol references: [Go TLS configuration](https://pkg.go.dev/crypto/tls#Config),
-[offline certificate hostname checks](https://pkg.go.dev/crypto/x509#Certificate.VerifyHostname),
-and [SSH transport identification](https://www.rfc-editor.org/rfc/rfc4253).
+## Understanding TLS results
 
-## Coverage
+Results can include TLS version, cipher, ALPN, certificate fingerprint, validity
+dates, and hostname matching. Hostnames are used for SNI; IP targets omit SNI
+unless `--sni` is supplied. The override keeps connections on the original IP.
 
-HTTP/1.0, HTTP/1.1, HTTPS, SSH identification banners, and generic TLS are covered.
-Detection is based on received bytes/negotiated protocol, not port-number hints.
-Software versions from Server headers and SSH banners are untrusted claims.
-Embedded signatures are built into the binary; external rule loading, STARTTLS,
-HTTP/2 application probes, HTTP/3/QUIC, and additional protocols remain future work.
+**Certificate trust is not verified.** Self-signed, expired, and mismatched
+certificates can be inspected. `certificate_verification` is `not_performed`;
+hostname and date checks do not establish trust. Software versions are server claims.
+
+TLS input and certificate details are size-limited. Very large certificate chains
+can fail inspection, and certificate name lists may be truncated. STARTTLS,
+HTTP/3, external signatures, and HTTP/2 Server-header extraction are unsupported.
+See the [output format](output-schema.md) for result fields.

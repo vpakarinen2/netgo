@@ -1,119 +1,104 @@
-# NDJSON schema v1
+# Output format
 
-`--format ndjson` emits one compact JSON object per line. All events contain
-`schema_version: 1` and `type`. Consumers should ignore additional fields within
-a supported schema version. Console output and `--check-config` are separate
-formats and do not use this envelope.
+Use NDJSON when saving results or integrating Netgo with scripts:
 
-## Result event
-
-```json
-{"schema_version":1,"type":"result","result":{"target":{"address":"127.0.0.1","hostname":"localhost","port":443,"transport":"tcp"},"method":"tcp-connect","state":"open","reason":"connected","observed_at":"2026-10-16T12:00:00Z","duration_ns":1200000,"attempts":1}}
+```sh
+./bin/scan localhost -p 443 --format ndjson -o results.ndjson
 ```
 
-- Exactly one final result is emitted per completed unique host/port pair.
-- `target.address` is a resolved IP; `hostname` is optional. IPv6 addresses use
-  their normal textual representation without brackets in this field.
-- `target.port` is an integer; `transport` is `tcp` or `udp`.
-- `method` is `tcp-connect` or `udp`.
-- `state` is `open`, `closed`, `open|filtered`, or `unknown`; `reason` provides the
-  concrete observation. See the README for mappings.
-- `observed_at` is the final attempt's observation time in UTC RFC3339 format,
-  with fractional seconds when needed.
-- `duration_ns` is the final attempt duration in nanoseconds, including socket
-  cleanup but excluding rate waiting and previous attempts.
-- `attempts` includes the first attempt and any timeout retries.
-- Optional `service` and `identification` fields describe enabled service inspection.
+Each line is one JSON object with `schema_version: 1` and a `type` of `result`
+or `summary`. Ignore unknown fields within a supported schema version.
+Progress and diagnostics go to stderr. Console and `--check-config` output
+use separate formats.
 
-Results are emitted in completion order. No global sorting buffer is used.
-Canceled in-flight attempts and local failures are not emitted as port results.
+## Port results
 
-## UDP metadata
-
-UDP results include `udp`, for example:
+This is one result line, expanded for readability:
 
 ```json
-{"probe":"dns","response_bytes":17,"ignored_responses":0,"oversized_responses":0}
+{
+  "schema_version": 1,
+  "type": "result",
+  "result": {
+    "target": {"address": "127.0.0.1", "hostname": "localhost", "port": 443, "transport": "tcp"},
+    "method": "tcp-connect",
+    "state": "open",
+    "reason": "connected",
+    "observed_at": "2026-10-17T12:00:00Z",
+    "duration_ns": 1200000,
+    "attempts": 1
+  }
+}
 ```
 
-`probe` is the actual payload (`empty`, `dns`, or `ntp`), after resolving `auto`.
-`response_bytes` is the matching reply length (zero also permits a matched empty
-generic datagram). Ignored/oversized counters describe the final attempt;
-oversized replies are included in `ignored_responses`. At most 64 rejected
-replies are processed per attempt. No response body is retained in these fields.
-DNS/NTP matches can include inline `service` evidence without `identification`
-metadata or extra connections. Generic replies do not imply a protocol name.
+| Field | Meaning |
+| --- | --- |
+| `target` | Resolved IP, optional hostname, port, and `tcp` or `udp` transport |
+| `method` | `tcp-connect` or `udp` |
+| `state` | `open`, `closed`, `open\|filtered`, or `unknown` in current backends |
+| `reason` | Observation behind the state, such as `connected` or `timeout` |
+| `observed_at` | Final attempt's observation time in UTC |
+| `duration_ns` | Final attempt duration; excludes rate waits and earlier retries |
+| `attempts` | First port attempt plus timeout retries |
+| `service` | Optional detected service and supporting evidence |
+| `identification` | Optional TCP inspection status, timing, and extra connections |
+| `udp` | UDP probe and reply counters |
 
-UDP reasons are `udp_response`, `port_unreachable`, `timeout`,
-`network_unreachable`, `host_unreachable`, or `response_limit`. `timeout` after
-a successful send maps to `open|filtered`; reaching the invalid-reply limit
-maps to `unknown`. Setup/send failures are errors, not silent-port results.
+Results arrive in completion order, once per completed unique host/port pair.
+Canceled attempts and local failures do not produce port results. See
+[TCP states](usage.md#reading-results) and [UDP reasons](udp.md#understanding-results).
 
-## Service metadata
+## Optional metadata
 
-With `--service`, completed open-port results also have `identification`:
+`service` contains a detected `name`, optional `product` and `version`, and
+`evidence` entries with `kind` and `value`. Supported names are `http`, `https`,
+`ssh`, `tls`, `dns`, and `ntp`. Software versions are server claims.
 
-```json
-{"status":"identified","duration_ns":250000000,"connections":3}
-```
+For TCP, `identification` has:
 
 - `status`: `identified`, `unrecognized`, `timeout`, `failed`, or `canceled`.
-- `duration_ns`: inspection time including its connection/rate waits.
-- `connections`: additional dial attempts, excluding the original port probe.
-- `error`: optional diagnostic, limited to 512 bytes. It can accompany an
-  identified TLS service when the subsequent HTTP probe failed.
-- `evidence`: optional unrecognized banner/response evidence. Invalid UTF-8 uses
-  base64 with a `_base64` kind suffix; otherwise JSON escaping preserves bytes
-  representable as UTF-8, including control characters.
-- `read_limit_reached`: optional true when a banner/HTTP buffer reached its cap;
-  this does not prove additional bytes were available.
+- `duration_ns` and `connections`: inspection time including rate waits, and
+  additional dial attempts beyond the port probe.
+- Optional `error`, `evidence`, and `read_limit_reached` fields.
 
-When detected, `service` contains `name` (`http`, `https`, `ssh`, `tls`, `dns`, or `ntp`),
-optional claimed `product`/`version` (up to 128 bytes each), and evidence such as
-`banner`, `http_status`, `http_server`, or negotiated `alpn: h2`. HTTP and SSH
-software versions are untrusted server claims. No service is guessed from its
-port number. Unrecognized or failed inspections can omit `service` while
-retaining `state: open` and the original port timings/reason/attempts.
+Unknown banner bytes are JSON-escaped when valid UTF-8, otherwise base64-encoded
+with a `_base64` evidence kind. `read_limit_reached` means a buffer reached its
+cap; it does not prove more bytes were available. Failed identification leaves
+the open-port result intact.
 
-TLS/HTTPS services additionally include `service.tls`: protocol `version`,
-`cipher_suite`, optional `alpn`/`server_name`, `sni_sent`, `reference_name`,
-`hostname_matches`, optional `hostname_error`, and
-`certificate_verification: not_performed`. Certificate chain trust is not
-validated. `certificate` contains subject/issuer, decimal serial, SHA-256 of the
-leaf DER certificate, UTC validity dates, `time_valid`, and bounded DNS/IP SAN
-lists. See [service-identification.md](service-identification.md) for field caps.
+TLS details appear under `service.tls`: `version`, `cipher_suite`, optional
+`alpn` and `server_name`, `sni_sent`, `reference_name`, `hostname_matches`, and
+optional `hostname_error`. **Certificate trust is not checked:**
+`certificate_verification` is `not_performed`.
 
-Canceled identification preserves completed open-port observations. Closed and
-unknown port results have no TCP identification metadata. These fields are additive
-within schema v1; clients should continue to ignore unrecognized fields.
+Its optional `certificate` includes subject, issuer, serial, SHA-256 fingerprint,
+validity dates, `time_valid`, and bounded DNS/IP name lists. `names_omitted`
+counts names beyond the retained limit. See [TLS interpretation](service-identification.md#understanding-tls-results).
 
-## Summary event
+UDP metadata contains `probe` (`dns`, `ntp`, or `empty`), `response_bytes`,
+`ignored_responses`, and `oversized_responses`. Counters cover the final attempt;
+oversized replies also count as ignored. DNS/NTP can add `service` without TCP
+`identification`. Reply bodies are not retained.
 
-```json
-{"schema_version":1,"type":"summary","summary":{"status":"completed","hosts":1,"ports":1,"total":1,"completed":1,"attempts":1,"open":1,"closed":0,"unknown":0,"started_at":"2026-10-16T12:00:00Z","finished_at":"2026-10-16T12:00:00.002Z","duration_ns":2000000}}
-```
+## Final summary
 
-The summary is the final event when the output sink remains writable:
+The final event has `type: summary` and a `summary` object:
 
-- `status`: `completed`, `canceled`, or `failed`.
-- `hosts`: unique addresses in the plan; `ports`: unique ports per address.
-- `total`: planned host/port pairs, excluding retries.
-- `completed`: final results successfully written through the selected router.
-- `attempts`: every started port probe, including failed or canceled attempts;
-  additional service connections are excluded.
-- `open`, `closed`, `open_filtered`, `filtered`, `unknown`: counts among completed
-  results. `filtered` is reserved for confirmed filtering evidence and currently
-  remains zero with these socket backends.
-- `started_at`, `finished_at`: UTC scan times, excluding DNS preflight.
-- `duration_ns`: elapsed scan time including rate waits and result draining.
-- `error`: optional diagnostic for failure or cancellation.
+| Field | Meaning |
+| --- | --- |
+| `status` | `completed`, `canceled`, or `failed` |
+| `hosts`, `ports` | Unique addresses and ports per address |
+| `total`, `completed` | Planned host/port pairs and results successfully written |
+| `attempts` | All started port probes, including retries and failed/canceled attempts |
+| `open`, `closed`, `open_filtered`, `filtered`, `unknown` | Counts among completed results |
+| `started_at`, `finished_at`, `duration_ns` | UTC scan times and elapsed time, excluding DNS preflight |
+| `error` | Optional failure or cancellation message |
 
-For a completed scan, `completed == total` and the five state counts sum to
-`completed`. Interrupted/failed scans can have fewer results than `total`.
-Summary duration is measured before writing the summary and closing output.
+Service connections are excluded from `attempts`. `filtered` is reserved and
+currently remains zero. For a completed scan, `completed` equals `total`, and
+the five state counts sum to `completed`.
 
-Invalid input, DNS errors, target limits, and output-file creation errors happen
-before the stream begins. Write/close failures can prevent delivery of a final
-summary, or fail after it has been written. Consumers must check process exit
-status as well as the summary. Mirroring stdout and a file is not an atomic
-transaction: one destination can receive a line before another fails.
+Always check the process exit code as well as the summary. Preflight failures
+produce no stream; write failures may prevent a summary, and close failures can
+occur after it. Mirroring stdout and a file is not atomic: one destination may
+receive a line before the other fails.
