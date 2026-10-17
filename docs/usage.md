@@ -4,13 +4,25 @@
 
 Requires Go 1.26 or newer. From the project folder:
 
+Windows (PowerShell):
+
+```powershell
+go build -o bin/scan.exe ./cmd/scan
+.\bin\scan.exe localhost -p 22,80,443
+```
+
+Linux/macOS:
+
 ```sh
 go build -o bin/scan ./cmd/scan
 ./bin/scan localhost -p 22,80,443
 ```
 
-On Windows, build with `-o bin/scan.exe` and replace `./bin/scan` in these
-examples with `.\bin\scan.exe`. No administrator privileges are required.
+Each command builds for your current operating system. The source directory
+is always `./cmd/scan`, including on Windows.
+
+In the examples below, Windows users should replace `./bin/scan` with
+`.\bin\scan.exe`. No administrator privileges are required.
 
 ## Common tasks
 

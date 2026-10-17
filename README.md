@@ -13,13 +13,28 @@ Requires Go 1.26 or newer.
 ```sh
 git clone https://github.com/vpakarinen2/netgo.git
 cd netgo
+```
+
+Windows (PowerShell):
+
+```powershell
+go build -o bin/scan.exe ./cmd/scan
+.\bin\scan.exe localhost -p 22,80,443
+```
+
+Linux/macOS:
+
+```sh
 go build -o bin/scan ./cmd/scan
 ./bin/scan localhost -p 22,80,443
 ```
 
-On Windows, build with `-o bin/scan.exe` and run `.\bin\scan.exe`.
+Each command builds for the operating system you run it on. The source path
+is always `./cmd/scan`; `.exe` belongs only in the Windows output filename.
 
 ## Examples
+
+On Windows, replace `./bin/scan` below with `.\bin\scan.exe`.
 
 ```sh
 # Identify services
