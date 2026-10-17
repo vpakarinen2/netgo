@@ -1,12 +1,11 @@
 # Netgo
 
-A terminal network scanner written in Go. Scan TCP and UDP ports, identify
-services, and stream results to the console or NDJSON—without elevated privileges.
+A terminal-based network scanner written in Go. Scan TCP and UDP ports, identify
+services, and stream results to the console or NDJSON.
 
-- IPv4, IPv6, CIDRs, and hostnames
-- HTTP, HTTPS, SSH, and TLS identification
-- DNS and NTP probes for UDP
 - Configurable concurrency, rate limits, timeouts, and retries
+- HTTP, HTTPS, SSH, and TLS identification
+- IPv4, IPv6, CIDRs, and hostnames
 
 ## Quick start
 
