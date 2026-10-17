@@ -1,7 +1,7 @@
 # Netgo
 
 A terminal-based network scanner written in Go. Scan TCP and UDP ports, identify
-services, and stream results to the console or NDJSON.
+services, and stream results to the console.
 
 - Configurable concurrency, rate limits, timeouts, and retries
 - HTTP, HTTPS, SSH, and TLS identification
