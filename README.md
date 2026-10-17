@@ -37,6 +37,9 @@ On Windows, replace `./bin/scan` with `.\bin\scan.exe`.
 # Identify services
 ./bin/scan localhost -p 22,80,443 --service
 
+# Allow up to 3 seconds per port attempt
+./bin/scan localhost -p 22,80,443 --timeout 3s
+
 # Probe UDP services
 ./bin/scan localhost --transport udp -p 53,123
 
