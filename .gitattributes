@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Preserve protocol fixture bytes, including HTTP line endings.
+testdata/banners/*.txt -text

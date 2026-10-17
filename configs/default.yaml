@@ -1,0 +1,28 @@
+# Defaults embedded in the executable. An explicit --config file overrides these.
+scan:
+  transport: tcp
+  ports: "22,80,443"
+  concurrency: 128
+  rate: 200
+  timeout: 1s
+  retries: 0
+  max_hosts: 65536
+  max_probes: 1000000
+dns:
+  concurrency: 16
+  timeout: 3s
+udp:
+  probe: auto
+  host_rate: 20
+  max_bytes: 4096
+service:
+  enabled: false
+  active: true
+  concurrency: 16
+  timeout: 3s
+  max_bytes: 8192
+  server_name: ""
+output:
+  format: console
+  file: ""
+  quiet: false
