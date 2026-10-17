@@ -30,6 +30,12 @@ go build -o bin/scan ./cmd/scan
 On Windows, replace `./bin/scan` with `.\bin\scan.exe`.
 
 ```sh
+# Default scan (TCP ports 22, 80, and 443 with built-in settings)
+./bin/scan localhost
+
+# Basic TCP scan with explicit ports
+./bin/scan localhost -p 80,443,8080
+
 # Identify services
 ./bin/scan localhost -p 22,80,443 --service
 
