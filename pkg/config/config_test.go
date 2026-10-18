@@ -41,6 +41,9 @@ func writeConfig(t *testing.T, content string) string {
 func testFlags() *pflag.FlagSet {
 	d := Defaults()
 	f := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	f.Int("tcp-host-rate", d.TCP.HostRate, "")
+	f.Int("tcp-host-concurrency", d.TCP.HostConcurrency, "")
+	f.Bool("stats", d.Output.Stats, "")
 	f.String("transport", d.Scan.Transport, "")
 	f.String("udp-probe", d.UDP.Probe, "")
 	f.Int("udp-host-rate", d.UDP.HostRate, "")

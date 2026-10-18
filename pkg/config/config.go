@@ -25,6 +25,12 @@ type Config struct {
 	Service Service `mapstructure:"service" json:"service"`
 	Output  Output  `mapstructure:"output" json:"output"`
 	UDP     UDP     `mapstructure:"udp" json:"udp"`
+	TCP     TCP     `mapstructure:"tcp" json:"tcp"`
+}
+
+type TCP struct {
+	HostRate        int `mapstructure:"host_rate" json:"host_rate"`
+	HostConcurrency int `mapstructure:"host_concurrency" json:"host_concurrency"`
 }
 
 type Scan struct {
@@ -51,6 +57,7 @@ type DNS struct {
 }
 
 type Output struct {
+	Stats  bool   `mapstructure:"stats" json:"stats"`
 	Format string `mapstructure:"format" json:"format"`
 	File   string `mapstructure:"file" json:"file"`
 	Quiet  bool   `mapstructure:"quiet" json:"quiet"`
@@ -66,6 +73,9 @@ type Service struct {
 }
 
 var bindings = []struct{ key, flag string }{
+	{"tcp.host_rate", "tcp-host-rate"},
+	{"tcp.host_concurrency", "tcp-host-concurrency"},
+	{"output.stats", "stats"},
 	{"scan.transport", "transport"},
 	{"udp.probe", "udp-probe"},
 	{"udp.host_rate", "udp-host-rate"},
@@ -163,6 +173,15 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	}
 	var cfg Config
 	var err error
+	if cfg.TCP.HostRate, err = intValue(v, "tcp.host_rate"); err != nil {
+		return Config{}, err
+	}
+	if cfg.TCP.HostConcurrency, err = intValue(v, "tcp.host_concurrency"); err != nil {
+		return Config{}, err
+	}
+	if cfg.Output.Stats, err = boolValue(v, "output.stats"); err != nil {
+		return Config{}, err
+	}
 	if flags != nil {
 		if flags.Changed("ports") {
 			portsPriority = 3
@@ -266,6 +285,12 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 // Validate checks the effective configuration before any network work begins.
 func (c Config) Validate() error {
 	var problems []error
+	if c.TCP.HostRate < 0 || c.TCP.HostRate > 1000000 {
+		problems = append(problems, errors.New("tcp.host_rate must be between 0 and 1000000 (0 disables)"))
+	}
+	if c.TCP.HostConcurrency < 0 || c.TCP.HostConcurrency > 65535 {
+		problems = append(problems, errors.New("tcp.host_concurrency must be between 0 and 65535 (0 disables)"))
+	}
 	if c.Scan.TopPorts != 0 {
 		if _, err := targets.TopPorts(c.Scan.TopPorts); err != nil {
 			problems = append(problems, fmt.Errorf("scan.top_ports: %w", err))

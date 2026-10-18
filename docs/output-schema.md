@@ -93,6 +93,7 @@ The final event has `type: summary` and a `summary` object:
 | `open`, `closed`, `open_filtered`, `filtered`, `unknown` | Counts among completed results |
 | `started_at`, `finished_at`, `duration_ns` | UTC scan times and elapsed time, excluding DNS preflight |
 | `error` | Optional failure or cancellation message |
+| `diagnostics` | Optional statistics and effective settings, enabled with `--stats` |
 
 Service connections are excluded from `attempts`. `filtered` is reserved and
 currently remains zero. For a completed scan, `completed` equals `total`, and
@@ -102,3 +103,23 @@ Always check the process exit code as well as the summary. Preflight failures
 produce no stream; write failures may prevent a summary, and close failures can
 occur after it. Mirroring stdout and a file is not atomic: one destination may
 receive a line before the other fails.
+
+## Diagnostic fields
+
+`summary.diagnostics` is additive within schema v1:
+
+| Field | Meaning |
+| --- | --- |
+| `settings` | Effective CLI configuration, including expanded port selection |
+| `port_attempts`, `probe_errors` | Started port attempts and local failures, including canceled attempts |
+| `active_connections`, `peak_connections` | Current/final and peak connection-budget leases, including service connections |
+| `gate_wait_ns`, `probe_time_ns` | Cumulative capacity/rate waiting and port-probe time |
+| `open_latency_samples`, `open_latency_total_ns` | Successful TCP attempt count and total duration; divide for the mean |
+| `service_statuses` | Counts of inspection outcomes |
+| `reasons` | Per-attempt reason counts, including retries; excess distinct reasons use `other` |
+| `hosts` | Up to 256 addresses, each with `address`, `attempts`, `timeouts`, and `errors` |
+| `unattributed_attempts` | Attempts beyond the host-detail limit, still included in global counts |
+
+Final `active_connections` is zero once workers have joined. These counters
+describe attempts rather than final port states, so retries can increase them
+beyond `completed`. See the [diagnostics guide](diagnostics.md) for interpretation.

@@ -7,8 +7,10 @@
 - UDP probes for DNS, NTP, and generic responses.
 - HTTP, HTTPS, SSH, and TLS service identification.
 - Concurrency limits, global/per-host pacing for UDP, timeouts, and retries.
+- Shared TCP host rate/connection limits and optional scan diagnostics.
+- Controlled top-1000 latency tests and a real loopback open-port regression test.
 - Streaming console and NDJSON output, file output, and cancellation.
-- YAML/environment/flag configuration, tests, and cross-platform CI definitions.
+- YAML/environment/flag configuration and cross-platform source/build support.
 
 ## Possible next steps
 

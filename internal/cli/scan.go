@@ -2,8 +2,12 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+
+	"golang.org/x/term"
 
 	"github.com/vpakarinen2/netgo/pkg/config"
 	"github.com/vpakarinen2/netgo/pkg/core"
@@ -30,6 +34,16 @@ func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, st
 		return err
 	}
 	options := core.Options{Concurrency: cfg.Scan.Concurrency, Rate: cfg.Scan.Rate, Retries: cfg.Scan.Retries, MaxProbes: uint64(cfg.Scan.MaxProbes), Transport: model.Transport(cfg.Scan.Transport)}
+	if cfg.Scan.Transport == "tcp" {
+		options.HostRate, options.HostConcurrency = cfg.TCP.HostRate, cfg.TCP.HostConcurrency
+	}
+	options.Diagnostics = cfg.Output.Stats
+	if options.Diagnostics {
+		options.Settings, err = json.Marshal(cfg)
+		if err != nil {
+			return fmt.Errorf("encode diagnostic settings: %w", err)
+		}
+	}
 	var prober network.Prober = &sockets.Connect{Timeout: cfg.Scan.Timeout}
 	if cfg.Scan.Transport == "udp" {
 		prober = &sockets.UDP{Timeout: cfg.Scan.Timeout, Kind: cfg.UDP.Probe, MaxBytes: cfg.UDP.MaxBytes}
@@ -47,7 +61,19 @@ func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, st
 		return err
 	}
 	if !cfg.Output.Quiet {
-		options.Progress = func(progress model.Progress) error { return output.PrintProgress(stderr, progress) }
+		outFile, outOK := stdout.(*os.File)
+		errFile, errOK := stderr.(*os.File)
+		interactive := cfg.Output.Format == "console" && outOK && errOK && term.IsTerminal(int(outFile.Fd())) && term.IsTerminal(int(errFile.Fd()))
+		width := func() int {
+			if errOK {
+				if columns, _, err := term.GetSize(int(errFile.Fd())); err == nil {
+					return columns
+				}
+			}
+			return 80
+		}
+		progress := output.NewProgress(writer, stderr, interactive, width)
+		writer, options.Progress = progress, progress.Report
 	}
 	_, err = core.Run(ctx, plan, ports, options, prober, writer)
 	return err

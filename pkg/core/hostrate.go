@@ -18,11 +18,48 @@ const hostRateBuckets = 1024
 // Tokens are consumed together at dispatch time, not reserved before another
 // limiter's wait, so delayed workers cannot bunch sends beyond either budget.
 type connectionBudget struct {
-	global   *rate.Limiter
-	hostRate int
-	seed     maphash.Seed
-	mu       sync.Mutex
-	hosts    [hostRateBuckets]*rate.Limiter
+	global          *rate.Limiter
+	hostRate        int
+	hostConcurrency int
+	seed            maphash.Seed
+	mu              sync.Mutex
+	hosts           [hostRateBuckets]*rate.Limiter
+	slots           [hostRateBuckets]chan struct{}
+}
+
+// acquire bounds both probes and inspection sockets. Buckets are fixed-size;
+// collisions conservatively share capacity. No lock is held while waiting.
+func (b *connectionBudget) acquire(ctx context.Context, address netip.Addr) (func(), error) {
+	var slot chan struct{}
+	if b.hostConcurrency > 0 {
+		data := address.Unmap().As16()
+		index := maphash.Bytes(b.seed, data[:]) % hostRateBuckets
+		b.mu.Lock()
+		slot = b.slots[index]
+		if slot == nil {
+			slot = make(chan struct{}, b.hostConcurrency)
+			b.slots[index] = slot
+		}
+		b.mu.Unlock()
+		select {
+		case slot <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	var once sync.Once
+	release := func() {
+		once.Do(func() {
+			if slot != nil {
+				<-slot
+			}
+		})
+	}
+	if err := b.wait(ctx, address); err != nil {
+		release()
+		return nil, err
+	}
+	return release, nil
 }
 
 func newConnectionBudget(globalRate, hostRate int) *connectionBudget {

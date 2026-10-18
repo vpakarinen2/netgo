@@ -14,7 +14,9 @@ type Dialer interface {
 	DialContext(context.Context, string, string) (net.Conn, error)
 }
 
-type ConnectionGate func(context.Context) error
+// ConnectionGate acquires a connection budget. Call the returned release exactly
+// once after closing the connection, including failed dials and setup failures.
+type ConnectionGate func(context.Context) (release func(), err error)
 
 // Prober performs one attempt. Implementations must support concurrent calls,
 // honor cancellation, and release per-attempt resources before returning.

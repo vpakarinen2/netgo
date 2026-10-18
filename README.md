@@ -47,6 +47,9 @@ On Windows, replace `./bin/scan` with `.\bin\scan.exe`.
 # Allow up to 3 seconds per port attempt
 ./bin/scan localhost -p 22,80,443 --timeout 3s
 
+# Limit connection pressure and show diagnostics
+./bin/scan localhost --top-ports 1000 --timeout 3s --tcp-host-rate 20 --tcp-host-concurrency 16 --stats
+
 # Probe UDP services
 ./bin/scan localhost --transport udp -p 53,123
 

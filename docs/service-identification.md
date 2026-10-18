@@ -23,6 +23,8 @@ an HTTP/2 request.
 Identification can open up to three extra connections per open port. These share
 `--rate` with port scans. Identification failures leave the port's `open` result
 unchanged, and there are no service retries.
+`--tcp-host-rate` and `--tcp-host-concurrency` also apply to these connections.
+Capacity and rate waits consume the inspection budget.
 
 ## Options
 

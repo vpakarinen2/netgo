@@ -12,6 +12,9 @@ scan:
 dns:
   concurrency: 16
   timeout: 3s
+tcp:
+  host_rate: 0
+  host_concurrency: 0
 udp:
   probe: auto
   host_rate: 20
@@ -24,6 +27,7 @@ service:
   max_bytes: 8192
   server_name: ""
 output:
+  stats: false
   format: console
   file: ""
   quiet: false

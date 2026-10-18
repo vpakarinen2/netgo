@@ -69,6 +69,8 @@ See [source and license notices](../THIRD_PARTY_NOTICES.md).
 | `--service` | Identify services on open TCP ports | Off |
 | `--rate` | Maximum probe starts per second, including service connections | `200` |
 | `--concurrency` | Maximum concurrent port probes | `128` |
+| `--tcp-host-rate` | TCP connection starts per host/second, including service connections | `0` (disabled) |
+| `--tcp-host-concurrency` | TCP connection slots per host, shared with service connections | `0` (disabled) |
 | `--timeout` | Time allowed per port attempt | `1s` |
 | `--retries` | Extra attempts after a timeout | `0` |
 | `--max-hosts` | Maximum unique target addresses | `65536` |
@@ -76,6 +78,7 @@ See [source and license notices](../THIRD_PARTY_NOTICES.md).
 | `--format` | `console` or `ndjson` | `console` |
 | `-o`, `--output` | Mirror results to a new file | No file |
 | `-q`, `--quiet` | Hide progress messages | Off |
+| `--stats` | Include diagnostic statistics in the final summary | Off |
 
 Run `./bin/scan --help` for every option. See the separate guides for
 [service options](service-identification.md) and [UDP options](udp.md).
@@ -127,7 +130,11 @@ keep port lists quoted, even for one port.
 
 Results appear as probes finish. Long console values are shortened; NDJSON
 preserves full values. Results go to stdout, progress and errors to stderr.
+Interactive console progress updates one line; redirected output and NDJSON
+mode use plain progress lines. `--quiet` hides progress without hiding statistics.
 Output files must be new: existing files are never overwritten.
+
+For slower or larger scans, see [diagnostics and connection limits](diagnostics.md).
 
 Press Ctrl+C to cancel. Exit codes are `0` for a completed scan, `1` for an
 error, and `130` for cancellation. A completed scan may still contain uncertain

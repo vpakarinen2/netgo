@@ -36,10 +36,16 @@ address and port. Bounded queues keep pending work under control.
 `--concurrency` limits active port probes. `--rate` limits probe starts,
 including retries and service connections. UDP adds per-host pacing through a
 fixed-size table; collisions share a budget rather than growing memory usage.
+TCP optionally uses the same bounded host table for rate and connection slots.
+Port probes and service dials acquire a lease, then release it after socket
+cleanup, including failures. Capacity waiting happens before rate waiting.
 
 TCP identification has its own worker pool. UDP identifies DNS/NTP replies
 inside the original probe. A single output coordinator writes results; slow
 output slows producers instead of dropping results.
+The coordinator also owns terminal progress, clearing and redrawing it around
+result rows. Optional diagnostics use bounded, synchronized counters; host
+detail is limited to 256 addresses and snapshots are taken after workers join.
 
 ## Failures and cancellation
 

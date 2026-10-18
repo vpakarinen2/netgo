@@ -29,9 +29,11 @@ func TestIdentificationConcurrencyAndFailuresPreservePortEvidence(t *testing.T) 
 		defer active.Add(-1)
 		for previous := peak.Load(); current > previous && !peak.CompareAndSwap(previous, current); previous = peak.Load() {
 		}
-		if err := gate(ctx); err != nil {
+		release, err := gate(ctx)
+		if err != nil {
 			return nil, model.Identification{Status: "canceled", Error: err.Error()}
 		}
+		defer release()
 		select {
 		case <-time.After(5 * time.Millisecond):
 		case <-ctx.Done():
@@ -124,9 +126,11 @@ func TestInspectionConnectionsShareRateBudget(t *testing.T) {
 	options.Rate, options.ServiceConcurrency = 20, 1
 	options.Identifier = identifyFunc(func(ctx context.Context, _ model.Target, gate network.ConnectionGate) (*model.Service, model.Identification) {
 		for range 2 {
-			if err := gate(ctx); err != nil {
+			release, err := gate(ctx)
+			if err != nil {
 				return nil, model.Identification{Status: "failed", Error: err.Error()}
 			}
+			release()
 		}
 		return &model.Service{Name: "tls"}, model.Identification{Status: "identified", Connections: 2}
 	})

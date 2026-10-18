@@ -2,6 +2,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"time"
@@ -128,6 +129,7 @@ type UDPInfo struct {
 // Summary counts final results written successfully, rather than every retry.
 // Attempts includes all started probes, including canceled or failed attempts.
 type Summary struct {
+	Diagnostics  *Diagnostics  `json:"diagnostics,omitempty"`
 	Status       string        `json:"status"`
 	Hosts        uint64        `json:"hosts"`
 	Ports        int           `json:"ports"`
@@ -143,6 +145,31 @@ type Summary struct {
 	FinishedAt   time.Time     `json:"finished_at"`
 	Duration     time.Duration `json:"duration_ns"`
 	Error        string        `json:"error,omitempty"`
+}
+
+// Diagnostics is opt-in. Host detail is bounded; unattributed attempts still
+// contribute to global counts. Gate waits include both rate and capacity waits.
+type Diagnostics struct {
+	Settings             json.RawMessage   `json:"settings,omitempty"`
+	PortAttempts         uint64            `json:"port_attempts"`
+	ProbeErrors          uint64            `json:"probe_errors"`
+	ActiveConnections    uint64            `json:"active_connections"`
+	PeakConnections      uint64            `json:"peak_connections"`
+	GateWait             time.Duration     `json:"gate_wait_ns"`
+	ProbeTime            time.Duration     `json:"probe_time_ns"`
+	OpenLatencySamples   uint64            `json:"open_latency_samples"`
+	OpenLatencyTotal     time.Duration     `json:"open_latency_total_ns"`
+	ServiceStatuses      map[string]uint64 `json:"service_statuses"`
+	Reasons              map[string]uint64 `json:"reasons"`
+	Hosts                []HostDiagnostics `json:"hosts"`
+	UnattributedAttempts uint64            `json:"unattributed_attempts"`
+}
+
+type HostDiagnostics struct {
+	Address  string `json:"address"`
+	Attempts uint64 `json:"attempts"`
+	Timeouts uint64 `json:"timeouts"`
+	Errors   uint64 `json:"errors"`
 }
 
 type Progress struct {

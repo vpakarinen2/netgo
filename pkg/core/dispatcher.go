@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -27,6 +28,9 @@ type Options struct {
 	ServiceConcurrency int
 	Transport          model.Transport
 	HostRate           int
+	HostConcurrency    int
+	Diagnostics        bool
+	Settings           json.RawMessage
 }
 
 // Run owns the writer and closes it on every return. Results already completed
@@ -40,7 +44,10 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 	if options.Transport == "" {
 		options.Transport = model.TCP
 	}
-	if options.Transport != model.TCP && options.Transport != model.UDP || options.HostRate < 0 || options.HostRate > 1000000 {
+	if options.Diagnostics && len(options.Settings) > 0 && !json.Valid(options.Settings) {
+		return summary, fmt.Errorf("invalid diagnostic settings JSON")
+	}
+	if options.Transport != model.TCP && options.Transport != model.UDP || options.HostRate < 0 || options.HostRate > 1000000 || options.HostConcurrency < 0 || options.HostConcurrency > 65535 {
 		return summary, fmt.Errorf("invalid transport or per-host rate")
 	}
 	if options.Transport == model.UDP && options.Identifier != nil {
@@ -91,6 +98,18 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 	jobs := make(chan model.Target, workers)
 	results := make(chan model.Result, workers)
 	budget := newConnectionBudget(options.Rate, options.HostRate)
+	budget.hostConcurrency = options.HostConcurrency
+	diagnostics := newDiagnostics(options.Diagnostics, options.Settings)
+	acquire := func(ctx context.Context, target model.Target) (func(), error) {
+		started := time.Now()
+		release, err := budget.acquire(ctx, target.Address)
+		if err != nil {
+			diagnostics.waited(time.Since(started))
+			return nil, err
+		}
+		finished := diagnostics.acquired(time.Since(started))
+		return func() { finished(); release() }, nil
+	}
 	probeResults := results
 	var inspections sync.WaitGroup
 	if options.Identifier != nil {
@@ -105,9 +124,10 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 						if runCtx.Err() != nil {
 							info.Status, info.Error = "canceled", runCtx.Err().Error()
 						} else {
-							result.Service, info = options.Identifier.Identify(runCtx, result.Target, func(ctx context.Context) error { return budget.wait(ctx, result.Target.Address) })
+							result.Service, info = options.Identifier.Identify(runCtx, result.Target, func(ctx context.Context) (func(), error) { return acquire(ctx, result.Target) })
 						}
 						result.Identification = &info
+						diagnostics.inspection(info)
 					}
 					results <- result
 				}
@@ -141,12 +161,15 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 					}
 					var result model.Result
 					for attempt := 1; attempt <= options.Retries+1; attempt++ {
-						if err := budget.wait(workCtx, target.Address); err != nil {
+						release, err := acquire(workCtx, target)
+						if err != nil {
 							return err
 						}
 						stats.attempts.Add(1)
-						var err error
+						probeStarted := time.Now()
 						result, err = prober.Probe(workCtx, target)
+						release()
+						diagnostics.probe(target.Address.String(), result, err, time.Since(probeStarted))
 						if err != nil {
 							return fmt.Errorf("probe %s:%d: %w", target.Address, target.Port, err)
 						}
@@ -245,6 +268,7 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 		stats.summary.Status = "failed"
 	}
 	stats.summary.Attempts = stats.attempts.Load()
+	stats.summary.Diagnostics = diagnostics.snapshot()
 	stats.summary.FinishedAt = time.Now().UTC()
 	stats.summary.Duration = time.Since(started)
 	if runErr != nil {

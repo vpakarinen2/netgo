@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vpakarinen2/netgo/pkg/model"
@@ -85,7 +86,11 @@ func (i *Inspector) Identify(ctx context.Context, target model.Target, gate netw
 	}
 	window := min(200*time.Millisecond, i.options.Timeout/4)
 	if deadline, ok := inspectCtx.Deadline(); ok {
-		_ = conn.SetReadDeadline(minTime(deadline, time.Now().Add(window)))
+		if err := conn.SetReadDeadline(minTime(deadline, time.Now().Add(window))); err != nil {
+			release()
+			setFailure(&info, err)
+			return
+		}
 	}
 	data, readErr := readAhead(conn, i.options.MaxBytes)
 	release()
@@ -155,11 +160,20 @@ func (i *Inspector) dial(ctx context.Context, target model.Target, gate network.
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
+	budgetRelease := func() {}
 	if gate != nil {
-		if err := gate(ctx); err != nil {
+		var err error
+		budgetRelease, err = gate(ctx)
+		if err != nil {
 			return nil, nil, err
 		}
 	}
+	owned := false
+	defer func() {
+		if !owned {
+			budgetRelease()
+		}
+	}()
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
@@ -189,7 +203,9 @@ func (i *Inspector) dial(ctx context.Context, target model.Target, gate network.
 		}
 	}
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
-	return conn, func() { stop(); _ = conn.Close() }, nil
+	owned = true
+	var once sync.Once
+	return conn, func() { once.Do(func() { stop(); _ = conn.Close(); budgetRelease() }) }, nil
 }
 
 func (i *Inspector) httpProbe(conn net.Conn, target model.Target) ([]byte, error) {

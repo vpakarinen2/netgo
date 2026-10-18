@@ -54,7 +54,7 @@ func TestHTTPProbeUsesHEADHostAndDoesNotFollowRedirects(t *testing.T) {
 	target.Hostname = "original.test"
 	i := newInspector(t, Options{Timeout: 3 * time.Second, MaxBytes: 1024, Active: true, ServerName: "virtual.test"})
 	var gates atomic.Int32
-	service, info := i.Identify(context.Background(), target, func(context.Context) error { gates.Add(1); return nil })
+	service, info := i.Identify(context.Background(), target, func(context.Context) (func(), error) { gates.Add(1); return func() {}, nil })
 	if service == nil || service.Name != "http" || service.Product != "test-http" || service.Version != "2.4" || info.Status != "identified" || info.Connections != 3 || gates.Load() != 3 {
 		t.Fatalf("service=%+v info=%+v gates=%d", service, info, gates.Load())
 	}
@@ -177,7 +177,7 @@ func TestInspectionCancellationAndGateDeadline(t *testing.T) {
 		t.Error("dial bypassed connection gate")
 		return nil, errors.New("unexpected dial")
 	})})
-	_, info := i.Identify(context.Background(), targetFor("127.0.0.1:80"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() })
+	_, info := i.Identify(context.Background(), targetFor("127.0.0.1:80"), func(ctx context.Context) (func(), error) { <-ctx.Done(); return nil, ctx.Err() })
 	if info.Status != "timeout" || info.Connections != 0 {
 		t.Fatalf("gate wait did not use inspection deadline: %+v", info)
 	}
