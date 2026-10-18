@@ -27,7 +27,7 @@ go build -o bin/scan ./cmd/scan
 
 ## Examples
 
-On Windows, replace `./bin/scan` with `.\bin\scan.exe`.
+Run `./bin/scan --help` for all options.
 
 ```sh
 # Default scan (ports 22, 80, and 443)
@@ -56,8 +56,6 @@ On Windows, replace `./bin/scan` with `.\bin\scan.exe`.
 # Save streaming JSON results
 ./bin/scan localhost -p 1-1024 --format ndjson -o results.ndjson
 ```
-
-Run `./bin/scan --help` for all options.
 
 ## Documentation
 
