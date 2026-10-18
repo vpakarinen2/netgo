@@ -41,6 +41,7 @@ func writeConfig(t *testing.T, content string) string {
 func testFlags() *pflag.FlagSet {
 	d := Defaults()
 	f := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	f.Bool("open-only", d.Output.OpenOnly, "")
 	f.Int("tcp-host-rate", d.TCP.HostRate, "")
 	f.Int("tcp-host-concurrency", d.TCP.HostConcurrency, "")
 	f.Bool("stats", d.Output.Stats, "")

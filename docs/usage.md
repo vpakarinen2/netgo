@@ -76,6 +76,7 @@ See [source and license notices](../THIRD_PARTY_NOTICES.md).
 | `--max-hosts` | Maximum unique target addresses | `65536` |
 | `--max-probes` | Maximum unique host/port pairs, excluding retries | `1000000` |
 | `--format` | `console` or `ndjson` | `console` |
+| `--open-only` | Show only confirmed open port results | Off |
 | `-o`, `--output` | Mirror results to a new file | No file |
 | `-q`, `--quiet` | Hide progress messages | Off |
 | `--stats` | Include diagnostic statistics in the final summary | Off |
@@ -133,6 +134,12 @@ preserves full values. Results go to stdout, progress and errors to stderr.
 Interactive console progress updates one line; redirected output and NDJSON
 mode use plain progress lines. `--quiet` hides progress without hiding statistics.
 Output files must be new: existing files are never overwritten.
+
+Use `--open-only` to hide closed and uncertain rows in console, NDJSON, and file
+output. Summaries and statistics still count all scanned ports; `reported`
+counts the result rows actually shown. `open|filtered` UDP ports are hidden
+because they are not confirmed open. YAML: `output.open_only`; environment:
+`NETGO_OUTPUT_OPEN_ONLY`.
 
 For slower or larger scans, see [diagnostics and connection limits](diagnostics.md).
 

@@ -38,6 +38,7 @@ func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, st
 		options.HostRate, options.HostConcurrency = cfg.TCP.HostRate, cfg.TCP.HostConcurrency
 	}
 	options.Diagnostics = cfg.Output.Stats
+	options.OpenOnly = cfg.Output.OpenOnly
 	if options.Diagnostics {
 		options.Settings, err = json.Marshal(cfg)
 		if err != nil {

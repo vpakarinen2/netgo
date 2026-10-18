@@ -19,6 +19,7 @@ import (
 const drainTimeout = 2 * time.Second
 
 type Options struct {
+	OpenOnly           bool
 	Concurrency        int
 	Rate               int
 	Retries            int
@@ -75,6 +76,7 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 	}
 	started := time.Now()
 	stats := &state{summary: model.Summary{Hosts: plan.HostCount(), Ports: len(ports), Total: total, StartedAt: started.UTC()}}
+	stats.summary.OpenOnly = options.OpenOnly
 	if options.Progress != nil {
 		if err := options.Progress(stats.progress()); err != nil {
 			return summary, fmt.Errorf("write progress: %w", err)
@@ -241,10 +243,13 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 			if writeErr != nil {
 				continue
 			}
-			if err := writer.WriteResult(writeCtx, result); err != nil {
-				writeErr = fmt.Errorf("write result: %w", err)
-				cancel()
-				continue
+			if !options.OpenOnly || result.State == model.Open {
+				if err := writer.WriteResult(writeCtx, result); err != nil {
+					writeErr = fmt.Errorf("write result: %w", err)
+					cancel()
+					continue
+				}
+				stats.summary.Reported++
 			}
 			stats.record(result)
 		}

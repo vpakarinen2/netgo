@@ -126,9 +126,12 @@ type UDPInfo struct {
 	OversizedResponses int    `json:"oversized_responses"`
 }
 
-// Summary counts final results written successfully, rather than every retry.
+// Summary counts completed observations, including deliberately hidden results.
+// Reported counts result rows written successfully, rather than every retry.
 // Attempts includes all started probes, including canceled or failed attempts.
 type Summary struct {
+	OpenOnly     bool          `json:"open_only,omitempty"`
+	Reported     uint64        `json:"reported"`
 	Diagnostics  *Diagnostics  `json:"diagnostics,omitempty"`
 	Status       string        `json:"status"`
 	Hosts        uint64        `json:"hosts"`

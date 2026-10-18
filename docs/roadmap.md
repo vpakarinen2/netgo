@@ -10,6 +10,7 @@
 - Shared TCP host rate/connection limits and optional scan diagnostics.
 - Controlled top-1000 latency tests and a real loopback open-port regression test.
 - Streaming console and NDJSON output, file output, and cancellation.
+- Optional open-only results, with complete summary and diagnostic counts.
 - YAML/environment/flag configuration and cross-platform source/build support.
 
 ## Possible next steps

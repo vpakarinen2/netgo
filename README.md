@@ -44,6 +44,9 @@ Run `./bin/scan --help` for all options.
 # Identify services
 ./bin/scan localhost -p 22,80,443 --service
 
+# Show only open ports
+./bin/scan localhost --top-ports 100 --open-only
+
 # Allow up to 3 seconds per port attempt
 ./bin/scan localhost -p 22,80,443 --timeout 3s
 

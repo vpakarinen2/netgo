@@ -52,6 +52,7 @@ func NewCommand(version string) *cobra.Command {
 	// Do not consult the environment until command execution.
 	defaults := config.Defaults()
 	flags := cmd.Flags()
+	flags.Bool("open-only", defaults.Output.OpenOnly, "Show only confirmed open port results; summaries and statistics still count all ports")
 	flags.Int("tcp-host-rate", defaults.TCP.HostRate, "Maximum TCP connection starts per host per second, including identification (0 disables)")
 	flags.Int("tcp-host-concurrency", defaults.TCP.HostConcurrency, "Maximum TCP connection slots per host, shared with identification (0 disables)")
 	flags.Bool("stats", defaults.Output.Stats, "Include bounded diagnostic statistics and effective settings in the final summary")

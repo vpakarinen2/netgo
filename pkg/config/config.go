@@ -57,10 +57,11 @@ type DNS struct {
 }
 
 type Output struct {
-	Stats  bool   `mapstructure:"stats" json:"stats"`
-	Format string `mapstructure:"format" json:"format"`
-	File   string `mapstructure:"file" json:"file"`
-	Quiet  bool   `mapstructure:"quiet" json:"quiet"`
+	OpenOnly bool   `mapstructure:"open_only" json:"open_only"`
+	Stats    bool   `mapstructure:"stats" json:"stats"`
+	Format   string `mapstructure:"format" json:"format"`
+	File     string `mapstructure:"file" json:"file"`
+	Quiet    bool   `mapstructure:"quiet" json:"quiet"`
 }
 
 type Service struct {
@@ -73,6 +74,7 @@ type Service struct {
 }
 
 var bindings = []struct{ key, flag string }{
+	{"output.open_only", "open-only"},
 	{"tcp.host_rate", "tcp-host-rate"},
 	{"tcp.host_concurrency", "tcp-host-concurrency"},
 	{"output.stats", "stats"},
@@ -173,6 +175,9 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	}
 	var cfg Config
 	var err error
+	if cfg.Output.OpenOnly, err = boolValue(v, "output.open_only"); err != nil {
+		return Config{}, err
+	}
 	if cfg.TCP.HostRate, err = intValue(v, "tcp.host_rate"); err != nil {
 		return Config{}, err
 	}

@@ -27,6 +27,7 @@ service:
   max_bytes: 8192
   server_name: ""
 output:
+  open_only: false
   stats: false
   format: console
   file: ""

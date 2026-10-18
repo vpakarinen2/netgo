@@ -78,6 +78,11 @@ func (c *Console) WriteSummary(ctx context.Context, summary model.Summary) error
 	if err != nil {
 		return err
 	}
+	if summary.OpenOnly {
+		if _, err := fmt.Fprintf(c.writer, "Open-only output: %d result rows shown\n", summary.Reported); err != nil {
+			return err
+		}
+	}
 	if summary.Diagnostics != nil {
 		return printDiagnostics(c.writer, summary.Diagnostics)
 	}

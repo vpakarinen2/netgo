@@ -44,7 +44,8 @@ This is one result line, expanded for readability:
 | `identification` | Optional TCP inspection status, timing, and extra connections |
 | `udp` | UDP probe and reply counters |
 
-Results arrive in completion order, once per completed unique host/port pair.
+Results arrive in completion order, once per completed unique host/port pair
+unless `--open-only` hides a non-open result.
 Canceled attempts and local failures do not produce port results. See
 [TCP states](usage.md#reading-results) and [UDP reasons](udp.md#understanding-results).
 
@@ -88,7 +89,9 @@ The final event has `type: summary` and a `summary` object:
 | --- | --- |
 | `status` | `completed`, `canceled`, or `failed` |
 | `hosts`, `ports` | Unique addresses and ports per address |
-| `total`, `completed` | Planned host/port pairs and results successfully written |
+| `total`, `completed` | Planned host/port pairs and completed observations, including deliberately hidden results |
+| `reported` | Result events successfully written after output filtering |
+| `open_only` | Present and true when only confirmed open results are emitted |
 | `attempts` | All started port probes, including retries and failed/canceled attempts |
 | `open`, `closed`, `open_filtered`, `filtered`, `unknown` | Counts among completed results |
 | `started_at`, `finished_at`, `duration_ns` | UTC scan times and elapsed time, excluding DNS preflight |
@@ -96,7 +99,8 @@ The final event has `type: summary` and a `summary` object:
 | `diagnostics` | Optional statistics and effective settings, enabled with `--stats` |
 
 Service connections are excluded from `attempts`. `filtered` is reserved and
-currently remains zero. For a completed scan, `completed` equals `total`, and
+currently remains zero. State counts include results hidden by `--open-only`.
+For a completed scan, `completed` equals `total`, and
 the five state counts sum to `completed`.
 
 Always check the process exit code as well as the summary. Preflight failures
