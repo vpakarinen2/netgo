@@ -68,6 +68,11 @@ func (c *Console) WriteSummary(ctx context.Context, summary model.Summary) error
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if c.header && summary.Diagnostics != nil {
+		if _, err := io.WriteString(c.writer, "\n"); err != nil {
+			return err
+		}
+	}
 	_, err := fmt.Fprintf(c.writer, "Scan %s: %d/%d completed, %d open, %d closed, %d open|filtered, %d filtered, %d unknown, %d attempts in %s\n",
 		safeText(summary.Status), summary.Completed, summary.Total, summary.Open, summary.Closed, summary.OpenFiltered, summary.Filtered, summary.Unknown, summary.Attempts, summary.Duration.Round(time.Millisecond))
 	if err != nil {
