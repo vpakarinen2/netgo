@@ -21,7 +21,7 @@ func NewConsole(writer io.Writer) *Console { return &Console{writer: writer} }
 
 // Fixed widths keep streamed rows aligned without buffering the whole scan.
 // Long display values are shortened; NDJSON retains the full values.
-var consoleWidths = [...]int{39, 9, 13, 20, 8, 24, 7, 18, 12}
+var consoleWidths = [...]int{39, 9, 13, 20, 20, 7, 18, 20, 18}
 
 func (c *Console) writeRow(fields ...string) error {
 	var row strings.Builder
@@ -48,7 +48,7 @@ func (c *Console) WriteResult(ctx context.Context, result model.Result) error {
 		return err
 	}
 	if !c.header {
-		if err := c.writeRow("ADDRESS", "PORT", "STATE", "REASON", "ATTEMPTS", "HOSTNAME", "SERVICE", "PRODUCT", "VERSION", "IDENTIFICATION"); err != nil {
+		if err := c.writeRow("ADDRESS", "PORT", "STATE", "REASON", "HOSTNAME", "SERVICE", "PRODUCT/VERSION", "EDGE", "WAF", "IDENTIFICATION"); err != nil {
 			return err
 		}
 		c.header = true
@@ -61,13 +61,17 @@ func (c *Console) WriteResult(ctx context.Context, result model.Result) error {
 	if result.Identification != nil {
 		status = result.Identification.Status
 	}
-	if err := c.writeRow(result.Target.Address.String(), fmt.Sprintf("%d/%s", result.Target.Port, result.Target.Transport), string(result.State), result.Reason, fmt.Sprint(result.Attempts), result.Target.Hostname, name, product, version, status); err != nil {
-		return err
+	if version != "" {
+		if product != "" {
+			product += "/"
+		}
+		product += version
 	}
+	edge, waf := "-", "-"
 	if result.Service != nil {
-		return writeWebDetails(c.writer, result.Service.Web)
+		edge, waf = webColumns(result.Service.Web)
 	}
-	return nil
+	return c.writeRow(result.Target.Address.String(), fmt.Sprintf("%d/%s", result.Target.Port, result.Target.Transport), string(result.State), result.Reason, result.Target.Hostname, name, product, edge, waf, status)
 }
 
 func (c *Console) WriteSummary(ctx context.Context, summary model.Summary) error {

@@ -7,11 +7,18 @@ response. No extra requests or connections are added:
 ./bin/scan localhost --top-ports 100 --service --open-only
 ```
 
-Console results can include a short detail line:
+Console results show edge and WAF observations in aligned columns on the port row:
 
 ```text
-  Web: edge=cloudflare [high]; WAF=unknown
+EDGE                  WAF
+cloudflare [high]     unknown
 ```
+
+`-` means no match or no collected HTTP headers. `unknown/challenge` means a
+Cloudflare challenge was observed while WAF status remains unknown. A `?`
+marks conflicting or unmatched headers. NDJSON retains full evidence, challenge
+providers, and warning codes. Long console cells are shortened with `...`.
+Product/version share one column; per-port attempts remain available in NDJSON.
 
 ## What is recognized
 
