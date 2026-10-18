@@ -61,7 +61,13 @@ func (c *Console) WriteResult(ctx context.Context, result model.Result) error {
 	if result.Identification != nil {
 		status = result.Identification.Status
 	}
-	return c.writeRow(result.Target.Address.String(), fmt.Sprintf("%d/%s", result.Target.Port, result.Target.Transport), string(result.State), result.Reason, fmt.Sprint(result.Attempts), result.Target.Hostname, name, product, version, status)
+	if err := c.writeRow(result.Target.Address.String(), fmt.Sprintf("%d/%s", result.Target.Port, result.Target.Transport), string(result.State), result.Reason, fmt.Sprint(result.Attempts), result.Target.Hostname, name, product, version, status); err != nil {
+		return err
+	}
+	if result.Service != nil {
+		return writeWebDetails(c.writer, result.Service.Web)
+	}
+	return nil
 }
 
 func (c *Console) WriteSummary(ctx context.Context, summary model.Summary) error {

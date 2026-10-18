@@ -9,6 +9,8 @@ Add `--service` to identify services on open TCP ports:
 Netgo recognizes HTTP, HTTPS, SSH, and TLS. Detection uses responses and
 negotiated protocols; an open port alone does not identify its service.
 [UDP detection](udp.md) is automatic and does not use `--service`.
+Parsed HTTP responses also include [passive edge and WAF observations](edge-waf.md),
+with evidence and confidence. CDN identity alone does not establish WAF protection.
 
 ## How it works
 

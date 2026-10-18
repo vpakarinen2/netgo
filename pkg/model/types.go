@@ -65,6 +65,28 @@ type Service struct {
 	Version  string     `json:"version,omitempty"`
 	Evidence []Evidence `json:"evidence,omitempty"`
 	TLS      *TLSInfo   `json:"tls,omitempty"`
+	Web      *WebInfo   `json:"web,omitempty"`
+}
+
+// WebInfo describes response-header observations, not verified infrastructure
+// ownership or protection effectiveness. Absence of a signal never proves absence.
+type WebInfo struct {
+	Edge       []WebDetection `json:"edge,omitempty"`
+	WAF        WAFObservation `json:"waf"`
+	Challenges []WebDetection `json:"challenges,omitempty"`
+	Warnings   []string       `json:"warnings,omitempty"`
+}
+
+type WebDetection struct {
+	Provider   string     `json:"provider"`
+	Kind       string     `json:"kind"`
+	Confidence string     `json:"confidence"`
+	Evidence   []Evidence `json:"evidence"`
+}
+
+type WAFObservation struct {
+	Status     string         `json:"status"`
+	Detections []WebDetection `json:"detections,omitempty"`
 }
 
 // Identification describes a best-effort inspection without changing port

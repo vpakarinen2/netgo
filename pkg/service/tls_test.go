@@ -54,6 +54,8 @@ func TestTLSCertificateSNIAndHTTPS(t *testing.T) {
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				host <- r.Host
 				w.Header().Set("Server", "tls-test/1.0")
+				w.Header().Set("X-Amz-Cf-Id", "fixture-id")
+				w.Header().Set("X-Amz-Cf-Pop", "fixture-pop")
 				w.WriteHeader(http.StatusNoContent)
 			}))
 			server.Config.ErrorLog = log.New(io.Discard, "", 0)
@@ -68,6 +70,9 @@ func TestTLSCertificateSNIAndHTTPS(t *testing.T) {
 				t.Fatalf("service=%+v info=%+v", service, info)
 			}
 			observed := service.TLS
+			if service.Web == nil || len(service.Web.Edge) != 1 || service.Web.Edge[0].Provider != "cloudfront" || service.Web.WAF.Status != "unknown" {
+				t.Fatalf("HTTPS lost web observations: %+v", service.Web)
+			}
 			if observed.CertificateVerification != "not_performed" || observed.HostnameMatches != tc.matches || observed.SNISent != (tc.sni != "") || observed.ServerName != tc.sni || observed.Version == "" || observed.CipherSuite == "" {
 				t.Fatalf("incorrect TLS observation: %+v", observed)
 			}

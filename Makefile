@@ -31,6 +31,7 @@ fuzz:
 	$(GO) test ./pkg/network/targets -run='^$$' -fuzz=FuzzParsePorts -fuzztime=10s
 	$(GO) test ./pkg/network/targets -run='^$$' -fuzz=FuzzSpanUnion -fuzztime=10s
 	$(GO) test ./pkg/service -run='^$$' -fuzz=FuzzFingerprint -fuzztime=10s
+	$(GO) test ./pkg/service -run='^$$' -fuzz=FuzzWebFingerprint -fuzztime=10s
 	$(GO) test ./pkg/network/sockets -run='^$$' -fuzz=FuzzUDPReplyMatching -fuzztime=10s
 
 clean:

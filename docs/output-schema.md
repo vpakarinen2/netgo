@@ -81,6 +81,24 @@ UDP metadata contains `probe` (`dns`, `ntp`, or `empty`), `response_bytes`,
 oversized replies also count as ignored. DNS/NTP can add `service` without TCP
 `identification`. Reply bodies are not retained.
 
+## Web observations
+
+When complete HTTP headers are parsed, `service.web` contains:
+
+| Field | Meaning |
+| --- | --- |
+| `edge` | Optional Cloudflare, CloudFront, and Varnish detections |
+| `waf.status` | `unknown` or `signal_observed` |
+| `waf.detections` | Optional AWS WAF action/status matches |
+| `challenges` | Optional Cloudflare challenge observations, separate from WAF |
+| `warnings` | Optional fixed codes for conflicting Server products or unmatched AWS action headers |
+
+Detections include `provider`, `kind` (`cdn`, `cache`, `waf`, or `challenge`),
+`confidence` (`low`, `medium`, `high`), and normalized `evidence` entries.
+There are at most three edge detections, one WAF detection, one challenge,
+and two warnings. Metadata is omitted without parsed HTTP headers.
+These are response claims, not verified protection. See the [edge/WAF guide](edge-waf.md).
+
 ## Final summary
 
 The final event has `type: summary` and a `summary` object:

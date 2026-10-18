@@ -64,6 +64,7 @@ Run `./bin/scan --help` for all options.
 
 [Usage](docs/usage.md) ·
 [Service identification](docs/service-identification.md) ·
+[Edge & WAF](docs/edge-waf.md) ·
 [UDP scanning](docs/udp.md) ·
 [Output format](docs/output-schema.md) ·
 [Architecture](docs/architecture.md) ·

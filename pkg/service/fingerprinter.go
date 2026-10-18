@@ -95,6 +95,7 @@ func (f *Fingerprinter) Match(data []byte) *model.Service {
 				continue
 			}
 			_ = response.Body.Close()
+			service.Web = observeWeb(response)
 			service.Evidence = []model.Evidence{{Kind: "http_status", Value: response.Proto + " " + response.Status}}
 			server := response.Header.Get("Server")
 			if server != "" {
