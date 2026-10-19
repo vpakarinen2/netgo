@@ -154,8 +154,8 @@ go vet ./...
 go test -race ./...
 ```
 
-Tests use local listeners. Race testing requires a supported platform and a C
-compiler. GNU Make users can also run `make check` and `make fuzz`.
+Tests use local listeners and race testing requires a supported platform and a C
+compiler. GNU Make users can also run `make check`.
 
 For a container build:
 
