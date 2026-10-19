@@ -138,8 +138,7 @@ Output files must be new: existing files are never overwritten.
 Use `--open-only` to hide closed and uncertain rows in console, NDJSON, and file
 output. Summaries and statistics still count all scanned ports; `reported`
 counts the result rows actually shown. `open|filtered` UDP ports are hidden
-because they are not confirmed open. YAML: `output.open_only`; environment:
-`NETGO_OUTPUT_OPEN_ONLY`.
+because they are not confirmed open.
 
 For slower or larger scans, see [diagnostics and connection limits](diagnostics.md).
 
