@@ -38,7 +38,7 @@ use `high`. Confidence is not authentication or a probability of protection.
 ## Understanding WAF status
 
 - `unknown`: no supported WAF-specific signature matched. This includes ordinary
-  Cloudflare/CloudFront responses and generic 403 or 429 responses.
+  Cloudflare/CloudFront responses and generic 403 or 429.
 - `signal_observed`: a supported AWS WAF action/status pair was present.
 
 A CDN or cache match does not establish WAF configuration. A Cloudflare challenge
