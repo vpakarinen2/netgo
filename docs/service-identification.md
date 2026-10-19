@@ -43,7 +43,7 @@ unchanged, and there are no service retries.
 ```
 
 Low rate limits can use up the inspection timeout before probing finishes.
-Individual active stages are capped at one second, even with a longer total timeout.
+Individual active stages are capped at one second.
 
 ## Understanding TLS results
 
