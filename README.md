@@ -31,12 +31,12 @@ go build -o bin/scan ./cmd/scan
 /bin/scan example.com --top-ports 10 --service
       
 ADDRESS                                  PORT       STATE          REASON                HOSTNAME              SERVICE  PRODUCT/VERSION     EDGE                  WAF                 IDENTIFICATION
-162.xxx.xxx.xx                           80/tcp     open           connected             example.com            http     cloudflare          cloudflare [high]     unknown             identified
-162.xxx.xxx.xx                           443/tcp    open           connected             example.com            https    cloudflare          cloudflare [high]     unknown             identified
-151.xxx.xxx.x                            80/tcp     open           connected             example.com            http     Varnish             varnish [high]        unknown             identified
-151.xxx.x.x                              443/tcp    open           connected             example.com            https    Varnish             varnish [high]        unknown             identified
-151.xxx.xxx.x                            443/tcp    open           connected             example.com            https    Varnish             varnish [high]        unknown             identified
-151.xxx.x.x                              80/tcp     open           connected             example.com            http     Varnish             varnish [high]        unknown             identified
+162.xxx.xxx.xx                           80/tcp     open           connected             example.com           http     cloudflare          cloudflare [high]     unknown             identified
+162.xxx.xxx.xx                           443/tcp    open           connected             example.com           https    cloudflare          cloudflare [high]     unknown             identified
+151.xxx.xxx.x                            80/tcp     open           connected             example.com           http     Varnish             varnish [high]        unknown             identified
+151.xxx.x.x                              443/tcp    open           connected             example.com           https    Varnish             varnish [high]        unknown             identified
+151.xxx.xxx.x                            443/tcp    open           connected             example.com           https    Varnish             varnish [high]        unknown             identified
+151.xxx.x.x                              80/tcp     open           connected             example.com           http     Varnish             varnish [high]        unknown             identified
 ```
 
 ## Examples
