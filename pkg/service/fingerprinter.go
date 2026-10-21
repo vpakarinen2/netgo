@@ -95,21 +95,25 @@ func (f *Fingerprinter) Match(data []byte) *model.Service {
 				continue
 			}
 			_ = response.Body.Close()
-			service.Web = observeWeb(response)
-			service.Evidence = []model.Evidence{{Kind: "http_status", Value: response.Proto + " " + response.Status}}
-			server := response.Header.Get("Server")
-			if server != "" {
-				service.Evidence = append(service.Evidence, model.Evidence{Kind: "http_server", Value: server})
-				software := strings.Fields(server)
-				if len(software) != 0 {
-					service.Product, service.Version, _ = strings.Cut(software[0], "/")
-				}
-			}
+			return matchHTTPResponse(response)
 		}
 		service.Product, service.Version = clipped(service.Product, 128), clipped(service.Version, 128)
 		return service
 	}
 	return nil
+}
+
+// Both HTTP versions use the same parsed-header observations.
+func matchHTTPResponse(response *http.Response) *model.Service {
+	service := &model.Service{Name: "http", Web: observeWeb(response), Evidence: []model.Evidence{{Kind: "http_status", Value: response.Proto + " " + response.Status}}}
+	if server := response.Header.Get("Server"); server != "" {
+		service.Evidence = append(service.Evidence, model.Evidence{Kind: "http_server", Value: server})
+		if software := strings.Fields(server); len(software) != 0 {
+			service.Product, service.Version, _ = strings.Cut(software[0], "/")
+		}
+	}
+	service.Product, service.Version = clipped(service.Product, 128), clipped(service.Version, 128)
+	return service
 }
 
 func evidence(kind string, data []byte) model.Evidence {

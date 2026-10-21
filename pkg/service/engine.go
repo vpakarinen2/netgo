@@ -209,6 +209,15 @@ func (i *Inspector) dial(ctx context.Context, target model.Target, gate network.
 }
 
 func (i *Inspector) httpProbe(conn net.Conn, target model.Target) ([]byte, error) {
+	host := i.httpAuthority(target)
+	request := "HEAD / HTTP/1.1\r\nHost: " + host + "\r\nUser-Agent: netgo\r\nConnection: close\r\n\r\n"
+	if _, err := io.WriteString(conn, request); err != nil {
+		return nil, err
+	}
+	return readAhead(conn, i.options.MaxBytes)
+}
+
+func (i *Inspector) httpAuthority(target model.Target) string {
 	host := i.options.ServerName
 	if host == "" {
 		host = target.Hostname
@@ -216,12 +225,7 @@ func (i *Inspector) httpProbe(conn net.Conn, target model.Target) ([]byte, error
 	if host == "" {
 		host = target.Address.String()
 	}
-	host = net.JoinHostPort(host, fmt.Sprint(target.Port))
-	request := "HEAD / HTTP/1.1\r\nHost: " + host + "\r\nUser-Agent: netgo\r\nConnection: close\r\n\r\n"
-	if _, err := io.WriteString(conn, request); err != nil {
-		return nil, err
-	}
-	return readAhead(conn, i.options.MaxBytes)
+	return net.JoinHostPort(host, fmt.Sprint(target.Port))
 }
 
 func setFailure(info *model.Identification, err error) {

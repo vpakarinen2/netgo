@@ -97,7 +97,10 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 		return err
 	}
 	workers := min(options.Concurrency, int(total))
-	jobs := make(chan model.Target, workers)
+	hosts := make(chan targets.Host)
+	ready := make(chan chan probeJob, workers)
+	finished := make(chan probeJob, workers)
+	stopped := make(chan struct{})
 	results := make(chan model.Result, workers)
 	budget := newConnectionBudget(options.Rate, options.HostRate)
 	budget.hostConcurrency = options.HostConcurrency
@@ -137,52 +140,58 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 		}
 	}
 	group.Go(func() error {
-		defer close(jobs)
+		defer close(hosts)
 		return fail(plan.ForEach(workCtx, func(host targets.Host) error {
-			for _, port := range ports {
-				target := model.Target{Address: host.Address, Hostname: host.Hostname, Port: port, Transport: options.Transport}
-				select {
-				case jobs <- target:
-				case <-workCtx.Done():
-					return workCtx.Err()
-				}
+			select {
+			case hosts <- host:
+				return nil
+			case <-workCtx.Done():
+				return workCtx.Err()
 			}
-			return nil
 		}))
+	})
+	group.Go(func() error {
+		window := min(maxScheduledHosts, max(2, workers*2))
+		return fail(scheduleProbes(workCtx, hosts, ports, options.Transport, window, budget, diagnostics, ready, finished, stopped))
 	})
 	for worker := 0; worker < workers; worker++ {
 		group.Go(func() (workerErr error) {
 			defer func() { fail(workerErr) }()
+			assigned := make(chan probeJob)
 			for {
 				select {
 				case <-workCtx.Done():
 					return workCtx.Err()
-				case target, ok := <-jobs:
-					if !ok {
-						return nil
-					}
-					var result model.Result
-					for attempt := 1; attempt <= options.Retries+1; attempt++ {
-						release, err := acquire(workCtx, target)
-						if err != nil {
-							return err
-						}
-						stats.attempts.Add(1)
-						probeStarted := time.Now()
-						result, err = prober.Probe(workCtx, target)
-						release()
-						diagnostics.probe(target.Address.String(), result, err, time.Since(probeStarted))
-						if err != nil {
-							return fmt.Errorf("probe %s:%d: %w", target.Address, target.Port, err)
-						}
-						result.Attempts = attempt
-						if result.Reason != "timeout" || result.State != model.Unknown && result.State != model.OpenFiltered {
-							break
-						}
-					}
-					// The coordinator keeps draining until every worker exits, even
-					// after a write error. Preserve finished results on cancellation.
+				case <-stopped:
+					return nil
+				case ready <- assigned:
+				}
+				var job probeJob
+				select {
+				case <-workCtx.Done():
+					return workCtx.Err()
+				case <-stopped:
+					return nil
+				case job = <-assigned:
+				}
+				stats.attempts.Add(1)
+				probeStarted := time.Now()
+				result, err := prober.Probe(workCtx, job.target)
+				job.release()
+				diagnostics.probe(job.target.Address.String(), result, err, time.Since(probeStarted))
+				if err != nil {
+					return fmt.Errorf("probe %s:%d: %w", job.target.Address, job.target.Port, err)
+				}
+				result.Attempts = job.attempt
+				job.retry = job.attempt <= options.Retries && result.Reason == "timeout" && (result.State == model.Unknown || result.State == model.OpenFiltered)
+				if !job.retry {
+					// Preserve completed results while the coordinator drains.
 					probeResults <- result
+				}
+				select {
+				case finished <- job:
+				case <-workCtx.Done():
+					return workCtx.Err()
 				}
 			}
 		})

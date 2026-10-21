@@ -16,6 +16,9 @@ Load and validate settings
 
 Target expansion is lazy, so a CIDR does not create one in-memory job for every
 address and port. Bounded queues keep pending work under control.
+Probes rotate across a window of up to 256 hosts (twice the worker count, with
+a minimum of two). Completed hosts are replaced lazily. Hosts waiting for rate
+or connection capacity are skipped, and retries rejoin the same scheduler.
 
 ## Code map
 
@@ -38,7 +41,9 @@ including retries and service connections. UDP adds per-host pacing through a
 fixed-size table; collisions share a budget rather than growing memory usage.
 TCP optionally uses the same bounded host table for rate and connection slots.
 Port probes and service dials acquire a lease, then release it after socket
-cleanup, including failures. Capacity waiting happens before rate waiting.
+cleanup, including failures. Capacity and rate tokens are acquired together;
+port workers receive only eligible attempts. Service workers wait for the same
+shared budgets within their inspection deadline.
 
 TCP identification has its own worker pool. UDP identifies DNS/NTP replies
 inside the original probe. A single output coordinator writes results; slow

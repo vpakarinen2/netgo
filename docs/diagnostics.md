@@ -8,13 +8,14 @@ Use `--stats` to help compare scans without guessing why ports timed out:
 
 TCP host limits apply to port attempts, retries, and service connections together.
 `--rate` and `--concurrency` still apply; service workers also have their own
-concurrency setting. A host slot is reserved before rate waiting and released
-after the connection closes. Both TCP host limits default to `0` (disabled).
+concurrency setting. Capacity and rate tokens are acquired together, and the
+slot is released after the connection closes. Both TCP host limits default to `0` (disabled).
 UDP keeps its separate `--udp-host-rate` setting.
 
 Host budgets use 1024 shared buckets to bound memory. Some addresses can share
-a bucket and therefore a more restrictive budget. Workers waiting for a slot
-or rate token do not hold a network socket. Service budget waits count toward
+a bucket and therefore a more restrictive budget. The port scheduler skips busy
+hosts within its bounded window; service workers wait without holding a socket.
+Service budget waits count toward
 `--service-timeout`, so very low limits can prevent identification from finishing.
 
 Statistics report attempt reasons, local probe errors, per-host timeouts,

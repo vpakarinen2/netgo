@@ -5,12 +5,14 @@
 - TCP connect scanning for IPv4, IPv6, CIDRs, and hostnames.
 - Common TCP port presets: top 10, 100, and 1,000.
 - UDP probes for DNS, NTP, and generic responses.
-- HTTP, HTTPS, SSH, and TLS service identification.
+- HTTP/1.1, HTTP/2 over TLS, SSH, and TLS service identification.
 - Passive Cloudflare/CloudFront/Varnish and selected WAF/challenge observations.
 - Concurrency limits, global/per-host pacing for UDP, timeouts, and retries.
 - Shared TCP host rate/connection limits and optional scan diagnostics.
+- Bounded host rotation that skips busy budgets, including for retries.
 - Controlled top-1000 latency tests and a real loopback open-port regression test.
 - Streaming console and NDJSON output, file output, and cancellation.
+- Terminal-width-aware result columns, with full columns when redirected.
 - Optional open-only results, with complete summary and diagnostic counts.
 - YAML/environment/flag configuration and cross-platform source/build support.
 

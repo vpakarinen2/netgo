@@ -131,6 +131,11 @@ keep port lists quoted, even for one port.
 
 Results appear as probes finish. Long console values are shortened; NDJSON
 preserves full values. Results go to stdout, progress and errors to stderr.
+Console columns adapt to terminal width, including with `--quiet`. Narrow views
+prioritize address, port, and state, then service/edge/WAF when inspected or the
+probe reason otherwise. Very narrow views also shorten addresses. Resizing or
+new service details can print a new header. Redirected console output
+keeps all columns; use `--format ndjson` for complete machine-readable details.
 Interactive console progress updates one line; redirected output and NDJSON
 mode use plain progress lines. `--quiet` hides progress without hiding statistics.
 Output files must be new: existing files are never overwritten.

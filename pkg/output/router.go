@@ -28,7 +28,7 @@ func New(format string, stdout io.Writer, path string) (Writer, error) {
 	}
 	var sink Writer
 	if format == "console" {
-		sink = NewConsole(writer)
+		sink = NewConsoleWithWidth(writer, terminalColumns(stdout))
 	} else {
 		sink = NewJSON(writer)
 	}

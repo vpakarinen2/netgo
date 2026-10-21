@@ -24,81 +24,87 @@ type connectionBudget struct {
 	seed            maphash.Seed
 	mu              sync.Mutex
 	hosts           [hostRateBuckets]*rate.Limiter
-	slots           [hostRateBuckets]chan struct{}
+	active          [hostRateBuckets]int
+	changed         chan struct{}
 }
 
 // acquire bounds both probes and inspection sockets. Buckets are fixed-size;
 // collisions conservatively share capacity. No lock is held while waiting.
 func (b *connectionBudget) acquire(ctx context.Context, address netip.Addr) (func(), error) {
-	var slot chan struct{}
-	if b.hostConcurrency > 0 {
-		data := address.Unmap().As16()
-		index := maphash.Bytes(b.seed, data[:]) % hostRateBuckets
-		b.mu.Lock()
-		slot = b.slots[index]
-		if slot == nil {
-			slot = make(chan struct{}, b.hostConcurrency)
-			b.slots[index] = slot
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		b.mu.Unlock()
+		changed := b.changes()
+		release, delay := b.tryAcquire(address)
+		if release != nil {
+			return release, nil
+		}
+		var tick <-chan time.Time
+		var timer *time.Timer
+		if delay > 0 {
+			timer = time.NewTimer(delay)
+			tick = timer.C
+		}
 		select {
-		case slot <- struct{}{}:
 		case <-ctx.Done():
-			return nil, ctx.Err()
+		case <-changed:
+		case <-tick:
+		}
+		if timer != nil {
+			timer.Stop()
 		}
 	}
-	var once sync.Once
-	release := func() {
-		once.Do(func() {
-			if slot != nil {
-				<-slot
-			}
-		})
-	}
-	if err := b.wait(ctx, address); err != nil {
-		release()
-		return nil, err
-	}
-	return release, nil
 }
 
 func newConnectionBudget(globalRate, hostRate int) *connectionBudget {
-	return &connectionBudget{global: rate.NewLimiter(rate.Limit(globalRate), 1), hostRate: hostRate, seed: maphash.MakeSeed()}
+	return &connectionBudget{global: rate.NewLimiter(rate.Limit(globalRate), 1), hostRate: hostRate, seed: maphash.MakeSeed(), changed: make(chan struct{})}
 }
 
-func (b *connectionBudget) wait(ctx context.Context, address netip.Addr) error {
-	if b.hostRate == 0 {
-		return waitToken(ctx, b.global)
-	}
+func (b *connectionBudget) changes() <-chan struct{} {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.changed
+}
+
+// tryAcquire consumes capacity and both tokens together, or consumes nothing.
+// A zero delay with no lease means a connection release must wake the caller.
+func (b *connectionBudget) tryAcquire(address netip.Addr) (func(), time.Duration) {
 	data := address.Unmap().As16()
 	index := maphash.Bytes(b.seed, data[:]) % hostRateBuckets
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		b.mu.Lock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.hostConcurrency > 0 && b.active[index] >= b.hostConcurrency {
+		return nil, 0
+	}
+	now := time.Now()
+	delay := tokenDelay(b.global, now)
+	if b.hostRate > 0 {
 		host := b.hosts[index]
 		if host == nil {
 			host = rate.NewLimiter(rate.Limit(b.hostRate), 1)
 			b.hosts[index] = host
 		}
-		now := time.Now()
-		delay := max(tokenDelay(b.global, now), tokenDelay(host, now))
-		if delay <= 0 {
-			b.global.AllowN(now, 1)
-			host.AllowN(now, 1)
-			b.mu.Unlock()
-			return ctx.Err()
-		}
-		b.mu.Unlock()
-		timer := time.NewTimer(delay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return ctx.Err()
-		case <-timer.C:
-		}
+		delay = max(delay, tokenDelay(host, now))
 	}
+	if delay > 0 {
+		return nil, delay
+	}
+	b.global.AllowN(now, 1)
+	if b.hostRate > 0 {
+		b.hosts[index].AllowN(now, 1)
+	}
+	b.active[index]++
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			b.mu.Lock()
+			defer b.mu.Unlock()
+			b.active[index]--
+			close(b.changed)
+			b.changed = make(chan struct{})
+		})
+	}, 0
 }
 
 func tokenDelay(limiter *rate.Limiter, now time.Time) time.Duration {

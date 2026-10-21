@@ -46,8 +46,8 @@ can come from different security features. Even a WAF-specific response only
 describes the observed request; it does not establish coverage or effectiveness.
 Headers can be hidden, changed, or imitated, so absence is inconclusive.
 
-Only collected HTTP/1 headers are inspected. Generic TLS, SSH, UDP, and HTTPS
-identified solely through HTTP/2 ALPN have no web observations. The scanner
+Collected HTTP/1.1 and HTTP/2 headers use the same signatures. Generic TLS, SSH,
+UDP, and HTTPS without successfully collected headers have no web observations. The scanner
 does not fetch challenge pages, solve challenges, follow redirects, or send
 additional detection probes. `--service-active=false` can identify web headers
 only if the server sends them without a request.
