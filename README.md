@@ -25,14 +25,25 @@ go build -o bin/scan ./cmd/scan
 ./bin/scan localhost -p 22,80,443
 ```
 
+## Output
+
+```
+/bin/scan example.com --top-ports 10 --service
+      
+ADDRESS                                  PORT       STATE          REASON                HOSTNAME              SERVICE  PRODUCT/VERSION     EDGE                  WAF                 IDENTIFICATION
+162.xxx.xxx.xx                           80/tcp     open           connected             example.com            http     cloudflare          cloudflare [high]     unknown             identified
+162.xxx.xxx.xx                           443/tcp    open           connected             example.com            https    cloudflare          cloudflare [high]     unknown             identified
+151.xxx.xxx.x                            80/tcp     open           connected             example.com            http     Varnish             varnish [high]        unknown             identified
+151.xxx.x.x                              443/tcp    open           connected             example.com            https    Varnish             varnish [high]        unknown             identified
+151.xxx.xxx.x                            443/tcp    open           connected             example.com            https    Varnish             varnish [high]        unknown             identified
+151.xxx.x.x                              80/tcp     open           connected             example.com            http     Varnish             varnish [high]        unknown             identified
+```
+
 ## Examples
 
 Run `./bin/scan --help` for all options.
 
 ```sh
-# Default scan (ports 22, 80, and 443)
-./bin/scan localhost
-
 # Basic TCP scan with explicit ports
 ./bin/scan localhost -p 80,443,8080
 
@@ -47,9 +58,6 @@ Run `./bin/scan --help` for all options.
 # Show only open ports
 ./bin/scan localhost --top-ports 100 --open-only
 
-# Show diagnostics
-./bin/scan localhost --stats
-
 # Set timeout
 ./bin/scan localhost -p 22,80,443 --timeout 3s
 
@@ -58,9 +66,6 @@ Run `./bin/scan --help` for all options.
 
 # Probe UDP services
 ./bin/scan localhost --transport udp -p 53,123
-
-# Save JSON results
-./bin/scan localhost -p 1-1024 --format ndjson -o results.ndjson
 ```
 
 ## Documentation
