@@ -1,4 +1,4 @@
-# Netgo
+# NetGo
 
 A terminal-based network scanner written in Go. Scan TCP and UDP ports, and identify services.
 
