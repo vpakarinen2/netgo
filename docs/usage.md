@@ -44,7 +44,6 @@ In the examples below, Windows users should replace `./bin/scan` with
 Targets can be IPv4/IPv6 addresses, CIDRs, or ASCII hostnames. Duplicate
 addresses and ports are scanned once. CIDRs include network and broadcast
 addresses. URLs, `host:port`, scoped IPv6, and address-range syntax are unsupported.
-DNS lookup errors stop the scan before port probing begins.
 
 ## Useful options
 
@@ -53,7 +52,7 @@ Choose a common TCP port preset instead of listing ports:
 ```sh
 ./bin/scan localhost --top-ports 10
 ./bin/scan localhost --top-ports 100
-./bin/scan localhost --top-ports 1000 --service
+./bin/scan localhost --top-ports 1000
 ```
 
 These are fixed common-port lists, not ports 1–100 or live popularity rankings.
