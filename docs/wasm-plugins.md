@@ -22,7 +22,6 @@ go run ./tools/build-plugins
 The build helper creates each `.wasm` file and a manifest with its SHA-256,
 then installs the bundles into `bin/scripts` for lookup by name.
 Generated modules/manifests are ignored by Git; regenerate them after source changes.
-On Linux/macOS, build `bin/scan` and use forward slashes in these commands.
 
 | Example | Check | Parameter |
 | --- | --- | --- |
@@ -42,7 +41,6 @@ hostname checks report their own observations without adding a certificate dump.
 A completed check without observations displays `No findings.` Basic TLS protocol
 details remain in the service summary; NDJSON retains collected certificate metadata.
 Use `--format ndjson` for structured evidence, or omit the flag for a compact table.
-Add `-o results.txt` to save the text report.
 
 For certificate information, select the dedicated script:
 
@@ -75,7 +73,7 @@ Names work with live scans and `scripts validate/test`. Netgo searches for
 The first matching bundle is validated; its manifest ID must match the name.
 For portable use, copy the `scripts` directory along with the executable.
 Custom bundles can be installed in either of the first two locations, or selected
-directly with `--script ./my-check/plugin.yaml`. Nothing is downloaded automatically.
+directly with `--script ./my-check/plugin.yaml`.
 
 ## Write a plugin
 
