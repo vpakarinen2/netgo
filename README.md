@@ -55,10 +55,7 @@ Run `./bin/scan --help` for all options.
 # Identify services
 ./bin/scan localhost -p 22,80,443 --service
 
-# Read detailed service and script results
-./bin/scan localhost -p 443 --service --format text
-
-# Show certificate information (build plugins once: go run ./tools/build-plugins)
+# Run script
 ./bin/scan localhost -p 443 --service --script tls-certificate --format text
 
 # Show only open ports
