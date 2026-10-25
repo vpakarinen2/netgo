@@ -1,6 +1,6 @@
 # Wasm plugins
 
-Netgo can run custom Wasm checks against collected TCP service evidence.
+Netgo runs custom Wasm checks against collected TCP service evidence.
 Plugins are selected explicitly with `--script` and require `--service`.
 
 The first release gives plugins scan evidence and isolated standard input/output.
