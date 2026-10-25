@@ -11,6 +11,7 @@ Load and validate settings
   -> Generate host/port pairs as needed
   -> Run rate-limited TCP or UDP probes
   -> Identify open TCP services when requested
+  -> Run explicitly selected Wasm checks when requested
   -> Stream results and a final summary
 ```
 
@@ -31,8 +32,9 @@ or connection capacity are skipped, and retries rejoin the same scheduler.
 | `pkg/network/sockets` | TCP connect and UDP probes, including OS error handling |
 | `pkg/core` | Workers, rate limits, retries, and scan counters |
 | `pkg/service` | Banner matching, HTTP probes, and TLS inspection |
+| `pkg/plugins`, `pkg/plugins/sdk` | Bounded WASI execution, bundle validation, and the authoring contract |
 | `pkg/model` | Shared result and metadata types |
-| `pkg/output` | Console, NDJSON, and file output |
+| `pkg/output` | Console tables, detailed text, NDJSON, and file output |
 
 ## Concurrency and limits
 
@@ -48,6 +50,10 @@ shared budgets within their inspection deadline.
 TCP identification has its own worker pool. UDP identifies DNS/NTP replies
 inside the original probe. A single output coordinator writes results; slow
 output slows producers instead of dropping results.
+Optional Wasm checks use a separate bounded worker stage after identification.
+Guests analyze a result snapshot and add metadata; they receive no sockets,
+filesystem mounts, or inherited environment. Plugin failures are aggregated
+after draining rather than canceling otherwise valid port work.
 The coordinator also owns terminal progress, clearing and redrawing it around
 result rows. Optional diagnostics use bounded, synchronized counters; host
 detail is limited to 256 addresses and snapshots are taken after workers join.
@@ -64,5 +70,6 @@ OS-level stdout or disk write may outlast that limit. Output failures can
 prevent delivery of the final summary, so callers must check the exit code.
 
 The current backends require no raw sockets or capture libraries. Raw SYN and
-plugins remain [future work](roadmap.md). See the [output format](output-schema.md)
+network-capable plugins remain [future work](roadmap.md). See [Wasm checks](wasm-plugins.md)
+and the [output format](output-schema.md)
 for the public result contract.

@@ -1,4 +1,27 @@
-# Output format
+# Output formats
+
+Choose a format with `--format`:
+
+| Format | Use |
+| --- | --- |
+| `console` (default) | Compact terminal table with script finding counts |
+| `text` | Readable port blocks with TLS details and full script finding messages |
+| `ndjson` | Structured results for tools, including all retained metadata |
+
+For readable details, use `--format text`. Add `-o results.txt` to save the same
+report to a new file. Results stream as they finish; each block identifies its
+address and port. Script blocks include completion/skipped/error status, findings,
+and evidence references. `--quiet` suppresses progress without hiding results.
+The service summary shows basic TLS protocol details. Expiry and hostname checks
+show their own findings and status without adding a full certificate dump.
+NDJSON retains collected certificate metadata for detailed inspection.
+Use `--script tls-certificate --format text` for a dedicated certificate report.
+
+```sh
+./bin/scan localhost -p 443 --service --format text -o results.txt
+```
+
+## NDJSON
 
 Use NDJSON when saving results or integrating Netgo with scripts:
 
@@ -8,8 +31,9 @@ Use NDJSON when saving results or integrating Netgo with scripts:
 
 Each line is one JSON object with `schema_version: 1` and a `type` of `result`
 or `summary`. Ignore unknown fields within a supported schema version.
-Progress and diagnostics go to stderr. Console and `--check-config` output
-use separate formats.
+Progress and command errors go to stderr. Requested `--stats` diagnostics are
+part of the final summary in every result format. `--check-config` always prints
+configuration JSON, independently of `--format`.
 
 ## Port results
 
@@ -43,6 +67,7 @@ This is one result line, expanded for readability:
 | `service` | Optional detected service and supporting evidence |
 | `identification` | Optional TCP inspection status, timing, and extra connections |
 | `udp` | UDP probe and reply counters |
+| `scripts` | Optional bounded Wasm check executions, with identity/hash, status, duration, findings, and errors |
 
 Results arrive in completion order, once per completed unique host/port pair
 unless `--open-only` hides a non-open result.
@@ -101,6 +126,15 @@ These are response claims, not verified protection. See the [edge/WAF guide](edg
 
 ## Final summary
 
+Wasm checks add `result.scripts`, retaining the original port/service evidence.
+Finding evidence fields are JSON Pointers relative to the result, excluding
+scripts. Optional `result.scripts[].details` contains informational `label`,
+`value`, and scalar `evidence_fields` entries. Details do not count as findings.
+`summary.scripts` counts invocations, completed/inconclusive/skipped
+runs, errors, timeouts, cancellations, and findings. Script failures permit port
+work to finish but mark the final scan failed; findings alone do not fail it.
+See [Wasm plugins](wasm-plugins.md) for the contract and limits.
+
 The final event has `type: summary` and a `summary` object:
 
 | Field | Meaning |
@@ -115,6 +149,7 @@ The final event has `type: summary` and a `summary` object:
 | `started_at`, `finished_at`, `duration_ns` | UTC scan times and elapsed time, excluding DNS preflight |
 | `error` | Optional failure or cancellation message |
 | `diagnostics` | Optional statistics and effective settings, enabled with `--stats` |
+| `scripts` | Optional Wasm execution totals, present when scripts are selected |
 
 Service connections are excluded from `attempts`. `filtered` is reserved and
 currently remains zero. State counts include results hidden by `--open-only`.

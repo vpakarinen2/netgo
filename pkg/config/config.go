@@ -26,6 +26,7 @@ type Config struct {
 	Output  Output  `mapstructure:"output" json:"output"`
 	UDP     UDP     `mapstructure:"udp" json:"udp"`
 	TCP     TCP     `mapstructure:"tcp" json:"tcp"`
+	Scripts Scripts `mapstructure:"scripts" json:"scripts"`
 }
 
 type TCP struct {
@@ -74,6 +75,11 @@ type Service struct {
 }
 
 var bindings = []struct{ key, flag string }{
+	{"scripts.paths", "script"},
+	{"scripts.parameters", "script-param"},
+	{"scripts.timeout", "script-timeout"},
+	{"scripts.concurrency", "script-concurrency"},
+	{"scripts.memory_mib", "script-memory"},
 	{"output.open_only", "open-only"},
 	{"tcp.host_rate", "tcp-host-rate"},
 	{"tcp.host_concurrency", "tcp-host-concurrency"},
@@ -175,6 +181,9 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 	}
 	var cfg Config
 	var err error
+	if cfg.Scripts, err = loadScripts(v); err != nil {
+		return Config{}, fmt.Errorf("scripts: %w", err)
+	}
 	if cfg.Output.OpenOnly, err = boolValue(v, "output.open_only"); err != nil {
 		return Config{}, err
 	}
@@ -290,6 +299,12 @@ func load(path string, flags *pflag.FlagSet, environment bool) (Config, error) {
 // Validate checks the effective configuration before any network work begins.
 func (c Config) Validate() error {
 	var problems []error
+	if err := c.Scripts.Validate(); err != nil {
+		problems = append(problems, fmt.Errorf("scripts: %w", err))
+	}
+	if len(c.Scripts.Paths) > 0 && (c.Scan.Transport != "tcp" || !c.Service.Enabled) {
+		problems = append(problems, errors.New("scripts require TCP and --service"))
+	}
 	if c.TCP.HostRate < 0 || c.TCP.HostRate > 1000000 {
 		problems = append(problems, errors.New("tcp.host_rate must be between 0 and 1000000 (0 disables)"))
 	}
@@ -349,8 +364,8 @@ func (c Config) Validate() error {
 	if strings.IndexByte(c.Output.File, 0) >= 0 {
 		problems = append(problems, errors.New("output.file contains a null byte"))
 	}
-	if c.Output.Format != "console" && c.Output.Format != "ndjson" {
-		problems = append(problems, errors.New("output.format must be console or ndjson"))
+	if c.Output.Format != "console" && c.Output.Format != "text" && c.Output.Format != "ndjson" {
+		problems = append(problems, errors.New("output.format must be console, text, or ndjson"))
 	}
 	if c.Service.Concurrency < 1 || c.Service.Concurrency > 256 {
 		problems = append(problems, errors.New("service.concurrency must be between 1 and 256"))

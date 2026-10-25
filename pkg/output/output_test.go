@@ -81,7 +81,7 @@ type failWriter struct{}
 func (failWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
 
 func TestOutputErrorsAndCancellation(t *testing.T) {
-	for _, format := range []string{"console", "ndjson"} {
+	for _, format := range []string{"console", "text", "ndjson"} {
 		writer, err := New(format, failWriter{}, "")
 		if err != nil {
 			t.Fatal(err)
@@ -89,10 +89,16 @@ func TestOutputErrorsAndCancellation(t *testing.T) {
 		if err := writer.WriteResult(context.Background(), sampleResult()); !errors.Is(err, io.ErrClosedPipe) {
 			t.Fatalf("%s lost write error: %v", format, err)
 		}
+		if err := writer.WriteSummary(context.Background(), model.Summary{}); !errors.Is(err, io.ErrClosedPipe) {
+			t.Fatalf("%s lost summary write error: %v", format, err)
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		if err := writer.WriteResult(ctx, sampleResult()); !errors.Is(err, context.Canceled) {
 			t.Fatalf("%s ignored cancellation: %v", format, err)
+		}
+		if err := writer.WriteSummary(ctx, model.Summary{}); !errors.Is(err, context.Canceled) {
+			t.Fatalf("%s ignored summary cancellation: %v", format, err)
 		}
 	}
 }

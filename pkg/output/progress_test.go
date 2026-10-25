@@ -66,7 +66,7 @@ func TestRedirectedProgressAndErrors(t *testing.T) {
 }
 
 func TestStatsAreOptionalInJSONAndConsole(t *testing.T) {
-	for _, format := range []string{"console", "ndjson"} {
+	for _, format := range []string{"console", "text", "ndjson"} {
 		var out bytes.Buffer
 		writer, err := New(format, &out, "")
 		if err != nil {

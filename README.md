@@ -4,7 +4,7 @@ A terminal-based network scanner written in Go. Scan TCP and UDP ports, and iden
 
 ## Quick start
 
-Requires Go 1.26 or newer.
+Requires Go 1.26.10 or newer. Builds select Go 1.27.3 or newer automatically.
 
 ```sh
 git clone https://github.com/vpakarinen2/netgo.git
@@ -28,8 +28,8 @@ go build -o bin/scan ./cmd/scan
 ## Output
 
 ```
-/bin/scan example.com --top-ports 10 --service
-      
+./bin/scan example.com --top-ports 10 --service
+
 ADDRESS                                  PORT       STATE          REASON                HOSTNAME              SERVICE  PRODUCT/VERSION     EDGE                  WAF                 IDENTIFICATION
 162.xxx.xxx.xx                           80/tcp     open           connected             example.com           http     cloudflare          cloudflare [high]     unknown             identified
 162.xxx.xxx.xx                           443/tcp    open           connected             example.com           https    cloudflare          cloudflare [high]     unknown             identified
@@ -55,6 +55,12 @@ Run `./bin/scan --help` for all options.
 # Identify services
 ./bin/scan localhost -p 22,80,443 --service
 
+# Read detailed service and script results
+./bin/scan localhost -p 443 --service --format text
+
+# Show certificate information (build plugins once: go run ./tools/build-plugins)
+./bin/scan localhost -p 443 --service --script tls-certificate --format text
+
 # Show only open ports
 ./bin/scan localhost --top-ports 100 --open-only
 
@@ -66,6 +72,7 @@ Run `./bin/scan --help` for all options.
 
 # Probe UDP services
 ./bin/scan localhost --transport udp -p 53,123
+
 ```
 
 ## Documentation
@@ -73,6 +80,7 @@ Run `./bin/scan --help` for all options.
 [Usage](docs/usage.md) ·
 [Service identification](docs/service-identification.md) ·
 [Edge & WAF](docs/edge-waf.md) ·
+[Wasm plugins](docs/wasm-plugins.md) ·
 [UDP scanning](docs/udp.md) ·
 [Output format](docs/output-schema.md) ·
 [Architecture](docs/architecture.md) ·

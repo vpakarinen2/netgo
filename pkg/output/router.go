@@ -13,7 +13,7 @@ func New(format string, stdout io.Writer, path string) (Writer, error) {
 	if stdout == nil {
 		return nil, fmt.Errorf("stdout writer is required")
 	}
-	if format != "console" && format != "ndjson" {
+	if format != "console" && format != "text" && format != "ndjson" {
 		return nil, fmt.Errorf("unsupported output format %q", format)
 	}
 	var file *os.File
@@ -27,9 +27,12 @@ func New(format string, stdout io.Writer, path string) (Writer, error) {
 		writer = io.MultiWriter(stdout, file)
 	}
 	var sink Writer
-	if format == "console" {
+	switch format {
+	case "console":
 		sink = NewConsoleWithWidth(writer, terminalColumns(stdout))
-	} else {
+	case "text":
+		sink = NewText(writer)
+	case "ndjson":
 		sink = NewJSON(writer)
 	}
 	return &router{Writer: sink, file: file}, nil

@@ -21,6 +21,7 @@ func TestCommand(t *testing.T) {
 		{"no args", nil, "Usage:", false},
 		{"version", []string{"--version"}, "v0.test", false},
 		{"check", []string{"--check-config", "--rate", "75"}, `"rate": 75`, false},
+		{"text format", []string{"--check-config", "--format", "text"}, `"format": "text"`, false},
 		{"bad flag", []string{"--unknown"}, "unknown flag", true},
 		{"bad config", []string{"--check-config", "--concurrency", "0"}, "scan.concurrency", true},
 		{"bad ports", []string{"--check-config", "--ports", "0"}, "scan.ports", true},

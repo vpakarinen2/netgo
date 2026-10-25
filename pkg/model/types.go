@@ -139,6 +139,7 @@ type Result struct {
 	Service        *Service        `json:"service,omitempty"`
 	Identification *Identification `json:"identification,omitempty"`
 	UDP            *UDPInfo        `json:"udp,omitempty"`
+	Scripts        []ScriptRun     `json:"scripts,omitempty"`
 }
 
 type UDPInfo struct {
@@ -152,24 +153,25 @@ type UDPInfo struct {
 // Reported counts result rows written successfully, rather than every retry.
 // Attempts includes all started probes, including canceled or failed attempts.
 type Summary struct {
-	OpenOnly     bool          `json:"open_only,omitempty"`
-	Reported     uint64        `json:"reported"`
-	Diagnostics  *Diagnostics  `json:"diagnostics,omitempty"`
-	Status       string        `json:"status"`
-	Hosts        uint64        `json:"hosts"`
-	Ports        int           `json:"ports"`
-	Total        uint64        `json:"total"`
-	Completed    uint64        `json:"completed"`
-	Attempts     uint64        `json:"attempts"`
-	Open         uint64        `json:"open"`
-	Closed       uint64        `json:"closed"`
-	OpenFiltered uint64        `json:"open_filtered"`
-	Filtered     uint64        `json:"filtered"`
-	Unknown      uint64        `json:"unknown"`
-	StartedAt    time.Time     `json:"started_at"`
-	FinishedAt   time.Time     `json:"finished_at"`
-	Duration     time.Duration `json:"duration_ns"`
-	Error        string        `json:"error,omitempty"`
+	OpenOnly     bool           `json:"open_only,omitempty"`
+	Reported     uint64         `json:"reported"`
+	Diagnostics  *Diagnostics   `json:"diagnostics,omitempty"`
+	Scripts      *ScriptSummary `json:"scripts,omitempty"`
+	Status       string         `json:"status"`
+	Hosts        uint64         `json:"hosts"`
+	Ports        int            `json:"ports"`
+	Total        uint64         `json:"total"`
+	Completed    uint64         `json:"completed"`
+	Attempts     uint64         `json:"attempts"`
+	Open         uint64         `json:"open"`
+	Closed       uint64         `json:"closed"`
+	OpenFiltered uint64         `json:"open_filtered"`
+	Filtered     uint64         `json:"filtered"`
+	Unknown      uint64         `json:"unknown"`
+	StartedAt    time.Time      `json:"started_at"`
+	FinishedAt   time.Time      `json:"finished_at"`
+	Duration     time.Duration  `json:"duration_ns"`
+	Error        string         `json:"error,omitempty"`
 }
 
 // Diagnostics is opt-in. Host detail is bounded; unattributed attempts still

@@ -17,6 +17,7 @@ func NewCommand(version string) *cobra.Command {
 	var check bool
 	cmd := &cobra.Command{
 		Use:           "scan [targets...]",
+		Args:          cobra.ArbitraryArgs,
 		Short:         "A modern TCP connect scanner and UDP prober",
 		Long:          "Netgo is a TCP connect scanner and UDP prober for IP addresses, CIDRs, and\nhostnames. Work is bounded and rate-limited. Results stream to stdout;\nprogress and diagnostics go to stderr.",
 		Version:       version,
@@ -52,6 +53,11 @@ func NewCommand(version string) *cobra.Command {
 	// Do not consult the environment until command execution.
 	defaults := config.Defaults()
 	flags := cmd.Flags()
+	flags.StringArray("script", defaults.Scripts.Paths, "Wasm script name or manifest path, e.g. tls-expiry (repeatable; requires --service)")
+	flags.StringArray("script-param", defaults.Scripts.Parameters, "Typed plugin parameter ID.name=value (repeatable)")
+	flags.Duration("script-timeout", defaults.Scripts.Timeout, "Per-invocation Wasm deadline, at most 5s")
+	flags.Int("script-concurrency", defaults.Scripts.Concurrency, "Concurrent port-check jobs (1-16)")
+	flags.Int("script-memory", defaults.Scripts.MemoryMiB, "Wasm linear memory per instance in MiB (16-256)")
 	flags.Bool("open-only", defaults.Output.OpenOnly, "Show only confirmed open port results; summaries and statistics still count all ports")
 	flags.Int("tcp-host-rate", defaults.TCP.HostRate, "Maximum TCP connection starts per host per second, including identification (0 disables)")
 	flags.Int("tcp-host-concurrency", defaults.TCP.HostConcurrency, "Maximum TCP connection slots per host, shared with identification (0 disables)")
@@ -78,8 +84,9 @@ func NewCommand(version string) *cobra.Command {
 	flags.Duration("service-timeout", defaults.Service.Timeout, "Total per-port inspection budget, including rate waits (at most 1m)")
 	flags.Int("service-max-bytes", defaults.Service.MaxBytes, "Maximum banner/HTTP response bytes per connection (256-65536)")
 	flags.String("sni", defaults.Service.ServerName, "Override TLS SNI, certificate reference name, and HTTP Host with a DNS hostname")
-	flags.String("format", defaults.Output.Format, "Scan result format: console or ndjson")
+	flags.String("format", defaults.Output.Format, "Scan result format: console (table), text (details), or ndjson")
 	flags.StringP("output", "o", defaults.Output.File, "Also write results to a new file (existing files are preserved)")
 	flags.BoolP("quiet", "q", defaults.Output.Quiet, "Suppress progress on stderr")
+	cmd.AddCommand(newScriptsCommand())
 	return cmd
 }

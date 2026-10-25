@@ -1,5 +1,16 @@
 # Third-party notices
 
+## Wasm runtime
+
+Netgo embeds [wazero v1.12.0](https://github.com/tetratelabs/wazero), licensed
+under the Apache License 2.0. A copy of that license is included in `LICENSE`.
+The upstream NOTICE is reproduced here:
+
+```text
+wazero
+Copyright 2020-2023 wazero authors
+```
+
 ## Common TCP port lists
 
 The 100- and 1,000-port presets in `pkg/network/targets/topports.go` are adapted

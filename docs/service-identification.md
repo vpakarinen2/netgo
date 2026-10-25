@@ -55,6 +55,9 @@ unless `--sni` is supplied. The override keeps connections on the original IP.
 certificates can be inspected. `certificate_verification` is `not_performed`;
 hostname and date checks do not establish trust. Software versions are server claims.
 
+TLS inspection currently supports TLS 1.2 and 1.3. Servers that only support
+TLS 1.0 or 1.1 cannot be identified through a TLS handshake.
+
 TLS input and certificate details are size-limited. Very large certificate chains
 can fail inspection, and certificate name lists may be truncated. STARTTLS,
 HTTP/3 and external signatures are unsupported. If HTTP/2 headers fail or exceed

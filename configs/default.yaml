@@ -26,9 +26,15 @@ service:
   timeout: 3s
   max_bytes: 8192
   server_name: ""
+scripts:
+  paths: []
+  parameters: []
+  timeout: 2s
+  concurrency: 4
+  memory_mib: 64
 output:
   open_only: false
   stats: false
-  format: console
+  format: console # console (table), text (details), or ndjson
   file: ""
   quiet: false

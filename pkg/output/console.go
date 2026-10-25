@@ -24,6 +24,7 @@ type Console struct {
 	rowLimit     int
 	addressWidth int
 	showService  bool
+	showScripts  bool
 }
 
 func NewConsole(writer io.Writer) *Console {
@@ -51,8 +52,8 @@ func terminalColumns(writer io.Writer) func() int {
 
 // Fixed widths keep streamed rows aligned without buffering the whole scan.
 // Long display values are shortened; NDJSON retains the full values.
-var consoleWidths = [...]int{39, 9, 13, 20, 20, 7, 18, 20, 18, 14}
-var consoleHeaders = [...]string{"ADDRESS", "PORT", "STATE", "REASON", "HOSTNAME", "SERVICE", "PRODUCT/VERSION", "EDGE", "WAF", "IDENTIFICATION"}
+var consoleWidths = [...]int{39, 9, 13, 20, 20, 7, 18, 20, 18, 14, 12}
+var consoleHeaders = [...]string{"ADDRESS", "PORT", "STATE", "REASON", "HOSTNAME", "SERVICE", "PRODUCT/VERSION", "EDGE", "WAF", "IDENTIFICATION", "CHECKS"}
 
 type consoleColumn struct{ field, width int }
 
@@ -62,17 +63,23 @@ func (c *Console) columns(address string) []consoleColumn {
 		columns = max(1, c.width()-1) // Avoid terminal autowrap at the right edge.
 	}
 	c.rowLimit = columns
-	if columns == 0 || columns >= 196 {
-		layout := make([]consoleColumn, len(consoleWidths))
-		for index, size := range consoleWidths {
-			layout[index] = consoleColumn{index, size}
+	wide := 196
+	count := len(consoleWidths) - 1
+	if c.showScripts {
+		wide += 14
+		count++
+	}
+	if columns == 0 || columns >= wide {
+		layout := make([]consoleColumn, count)
+		for index := range layout {
+			layout[index] = consoleColumn{index, consoleWidths[index]}
 		}
 		return layout
 	}
 	// Keep a stable address width as IPv4/IPv6 results interleave. Grow when
 	// needed, but do not alternate headers for every change of address family.
 	c.addressWidth = max(c.addressWidth, 15, textWidth(address))
-	sizes := [10]int{c.addressWidth, 9, 13}
+	sizes := [11]int{c.addressWidth, 9, 13}
 	used := sizes[0] + sizes[1] + sizes[2] + 4
 	// Below normal terminal widths, keep endpoint/state columns as useful as
 	// possible. Individual values are visibly shortened rather than wrapped.
@@ -88,6 +95,9 @@ func (c *Console) columns(address string) []consoleColumn {
 	optional := []consoleColumn{{3, 20}, {4, 20}}
 	if c.showService {
 		optional = append([]consoleColumn{{5, 7}, {7, 15}, {8, 10}, {6, 15}, {9, 14}}, optional...)
+	}
+	if c.showScripts {
+		optional = append([]consoleColumn{{10, 12}}, optional...)
 	}
 	for _, column := range optional {
 		if used+column.width+2 <= columns {
@@ -136,6 +146,7 @@ func (c *Console) WriteResult(ctx context.Context, result model.Result) error {
 		return err
 	}
 	c.showService = c.showService || result.Service != nil || result.Identification != nil
+	c.showScripts = c.showScripts || len(result.Scripts) > 0
 	layout := c.columns(result.Target.Address.String())
 	changed := len(layout) != len(c.layout)
 	if !changed {
@@ -171,14 +182,14 @@ func (c *Console) WriteResult(ctx context.Context, result model.Result) error {
 	if result.Service != nil {
 		edge, waf = webColumns(result.Service.Web)
 	}
-	return c.writeRow(result.Target.Address.String(), fmt.Sprintf("%d/%s", result.Target.Port, result.Target.Transport), string(result.State), result.Reason, result.Target.Hostname, name, product, edge, waf, status)
+	return c.writeRow(result.Target.Address.String(), fmt.Sprintf("%d/%s", result.Target.Port, result.Target.Transport), string(result.State), result.Reason, result.Target.Hostname, name, product, edge, waf, status, scriptColumn(result.Scripts))
 }
 
 func (c *Console) WriteSummary(ctx context.Context, summary model.Summary) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if c.header && summary.Diagnostics != nil {
+	if c.header && (summary.Diagnostics != nil || summary.Scripts != nil) {
 		if _, err := io.WriteString(c.writer, "\n"); err != nil {
 			return err
 		}
@@ -194,9 +205,41 @@ func (c *Console) WriteSummary(ctx context.Context, summary model.Summary) error
 		}
 	}
 	if summary.Diagnostics != nil {
-		return printDiagnostics(c.writer, summary.Diagnostics)
+		if err := printDiagnostics(c.writer, summary.Diagnostics); err != nil {
+			return err
+		}
+	}
+	if stats := summary.Scripts; stats != nil {
+		_, err := fmt.Fprintf(c.writer, "Scripts: %d invocations, %d findings, %d completed, %d inconclusive, %d skipped, %d errors, %d timeouts, %d canceled\n", stats.Invocations, stats.Findings, stats.Completed, stats.Inconclusive, stats.Skipped, stats.Errors, stats.Timeouts, stats.Canceled)
+		return err
 	}
 	return nil
+}
+
+func scriptColumn(runs []model.ScriptRun) string {
+	if len(runs) == 0 {
+		return "-"
+	}
+	findings, completed := 0, false
+	inconclusive := false
+	for _, run := range runs {
+		if run.Status == "error" || run.Status == "timeout" || run.Status == "canceled" {
+			return run.Status
+		}
+		findings += len(run.Findings)
+		completed = completed || run.Status == "completed"
+		inconclusive = inconclusive || run.Status == "inconclusive"
+	}
+	if findings > 0 {
+		return fmt.Sprintf("%d findings", findings)
+	}
+	if inconclusive {
+		return "inconclusive"
+	}
+	if completed {
+		return "completed"
+	}
+	return "skipped"
 }
 
 func (c *Console) Close() error { return nil }

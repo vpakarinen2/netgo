@@ -2,7 +2,8 @@
 
 ## Build and run
 
-Requires Go 1.26 or newer. From the project folder:
+Requires Go 1.26.10 or newer; builds select Go 1.27.3 or newer automatically.
+From the project folder:
 
 Windows (PowerShell):
 
@@ -74,7 +75,7 @@ See [source and license notices](../THIRD_PARTY_NOTICES.md).
 | `--retries` | Extra attempts after a timeout | `0` |
 | `--max-hosts` | Maximum unique target addresses | `65536` |
 | `--max-probes` | Maximum unique host/port pairs, excluding retries | `1000000` |
-| `--format` | `console` or `ndjson` | `console` |
+| `--format` | `console`, `text`, or `ndjson` | `console` |
 | `--open-only` | Show only confirmed open port results | Off |
 | `-o`, `--output` | Mirror results to a new file | No file |
 | `-q`, `--quiet` | Hide progress messages | Off |
@@ -128,18 +129,20 @@ keep port lists quoted, even for one port.
 | `open\|filtered` | UDP received no accepted reply before its deadline |
 | `unknown` | There was insufficient evidence, such as a TCP timeout |
 
-Results appear as probes finish. Long console values are shortened; NDJSON
-preserves full values. Results go to stdout, progress and errors to stderr.
+Results appear as probes finish. Long console values are shortened. Use
+`--format text` for readable detail blocks with full script finding messages,
+or `--format ndjson` for structured evidence. Results go to stdout, progress
+and errors to stderr.
 Console columns adapt to terminal width, including with `--quiet`. Narrow views
 prioritize address, port, and state, then service/edge/WAF when inspected or the
 probe reason otherwise. Very narrow views also shorten addresses. Resizing or
 new service details can print a new header. Redirected console output
 keeps all columns; use `--format ndjson` for complete machine-readable details.
-Interactive console progress updates one line; redirected output and NDJSON
+Interactive console/text progress updates one line; redirected output and NDJSON
 mode use plain progress lines. `--quiet` hides progress without hiding statistics.
 Output files must be new: existing files are never overwritten.
 
-Use `--open-only` to hide closed and uncertain rows in console, NDJSON, and file
+Use `--open-only` to hide closed and uncertain results in every format and file
 output. Summaries and statistics still count all scanned ports; `reported`
 counts the result rows actually shown. `open|filtered` UDP ports are hidden
 because they are not confirmed open.

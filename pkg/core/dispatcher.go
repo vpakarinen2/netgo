@@ -26,6 +26,8 @@ type Options struct {
 	MaxProbes          uint64
 	Progress           func(model.Progress) error
 	Identifier         Identifier
+	Scripts            ScriptRunner
+	ScriptConcurrency  int
 	ServiceConcurrency int
 	Transport          model.Transport
 	HostRate           int
@@ -60,6 +62,9 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 	if options.Identifier != nil && (options.ServiceConcurrency < 1 || options.ServiceConcurrency > 256) {
 		return summary, fmt.Errorf("service concurrency must be between 1 and 256")
 	}
+	if options.Scripts != nil && (options.Identifier == nil || options.Transport != model.TCP || options.ScriptConcurrency < 1 || options.ScriptConcurrency > 16) {
+		return summary, fmt.Errorf("scripts require TCP identification and 1-16 script workers")
+	}
 	seen := make(map[uint16]bool, len(ports))
 	for _, port := range ports {
 		if port == 0 || seen[port] {
@@ -77,6 +82,9 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 	started := time.Now()
 	stats := &state{summary: model.Summary{Hosts: plan.HostCount(), Ports: len(ports), Total: total, StartedAt: started.UTC()}}
 	stats.summary.OpenOnly = options.OpenOnly
+	if options.Scripts != nil {
+		stats.summary.Scripts = &model.ScriptSummary{}
+	}
 	if options.Progress != nil {
 		if err := options.Progress(stats.progress()); err != nil {
 			return summary, fmt.Errorf("write progress: %w", err)
@@ -115,7 +123,24 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 		finished := diagnostics.acquired(time.Since(started))
 		return func() { finished(); release() }, nil
 	}
-	probeResults := results
+	inspectionResults := results
+	var scripts sync.WaitGroup
+	if options.Scripts != nil {
+		inspectionResults = make(chan model.Result, workers)
+		for worker := 0; worker < min(options.ScriptConcurrency, int(total)); worker++ {
+			scripts.Add(1)
+			go func() {
+				defer scripts.Done()
+				for result := range inspectionResults {
+					if result.State == model.Open {
+						result.Scripts = options.Scripts.Run(runCtx, result, time.Now().UTC())
+					}
+					results <- result
+				}
+			}()
+		}
+	}
+	probeResults := inspectionResults
 	var inspections sync.WaitGroup
 	if options.Identifier != nil {
 		probeResults = make(chan model.Result, workers)
@@ -134,7 +159,7 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 						result.Identification = &info
 						diagnostics.inspection(info)
 					}
-					results <- result
+					inspectionResults <- result
 				}
 			}()
 		}
@@ -206,6 +231,10 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 			close(probeResults)
 			inspections.Wait()
 		}
+		if options.Scripts != nil {
+			close(inspectionResults)
+			scripts.Wait()
+		}
 		close(results)
 		done <- err
 	}()
@@ -261,6 +290,7 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 				stats.summary.Reported++
 			}
 			stats.record(result)
+			stats.recordScripts(result.Scripts)
 		}
 	}
 	groupErr := <-done
@@ -274,6 +304,8 @@ func Run(ctx context.Context, plan *targets.Plan, ports []uint16, options Option
 		runErr = groupErr
 	case ctx.Err() != nil:
 		runErr = ctx.Err()
+	case stats.summary.Scripts != nil && (stats.summary.Scripts.Errors > 0 || stats.summary.Scripts.Timeouts > 0 || stats.summary.Scripts.Canceled > 0):
+		runErr = fmt.Errorf("one or more script executions failed; see result.scripts")
 	}
 	stats.summary.Status = "completed"
 	if ctx.Err() != nil {

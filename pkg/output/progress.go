@@ -11,7 +11,7 @@ import (
 )
 
 // Progress and its underlying writer share the dispatcher's serial coordinator.
-// Carriage returns/spaces work without ANSI support. Only interactive console
+// Carriage returns/spaces work without ANSI support. Only interactive console/text
 // mode rewrites a line; redirected output remains an ordinary line stream.
 type Progress struct {
 	Writer

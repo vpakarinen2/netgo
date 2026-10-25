@@ -4,3 +4,5 @@
 /.cache/
 *.test
 *.prof
+/examples/plugins/*/*.wasm
+/examples/plugins/*/plugin.yaml

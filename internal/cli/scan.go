@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,13 +17,22 @@ import (
 	"github.com/vpakarinen2/netgo/pkg/network/sockets"
 	"github.com/vpakarinen2/netgo/pkg/network/targets"
 	"github.com/vpakarinen2/netgo/pkg/output"
+	"github.com/vpakarinen2/netgo/pkg/plugins"
 	"github.com/vpakarinen2/netgo/pkg/service"
 )
 
-func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, stderr io.Writer) error {
+func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, stderr io.Writer) (runErr error) {
 	ports, err := targets.ParsePorts(cfg.Scan.Ports)
 	if err != nil {
 		return err
+	}
+	var engine *plugins.Engine
+	if len(cfg.Scripts.Paths) > 0 {
+		engine, err = loadSelectedScripts(ctx, cfg.Scripts.Paths, cfg.Scripts.Parameters, plugins.Limits{Timeout: cfg.Scripts.Timeout, MemoryMiB: cfg.Scripts.MemoryMiB})
+		if err != nil {
+			return fmt.Errorf("initialize scripts: %w", err)
+		}
+		defer func() { runErr = errors.Join(runErr, engine.Close(context.Background())) }()
 	}
 	plan, err := targets.NewPlan(ctx, inputs, targets.Options{
 		MaxHosts: uint64(cfg.Scan.MaxHosts), DNSConcurrency: cfg.DNS.Concurrency, DNSTimeout: cfg.DNS.Timeout,
@@ -30,10 +40,19 @@ func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, st
 	if err != nil {
 		return fmt.Errorf("plan targets: %w", err)
 	}
-	if _, err := plan.ProbeCount(len(ports), uint64(cfg.Scan.MaxProbes)); err != nil {
+	total, err := plan.ProbeCount(len(ports), uint64(cfg.Scan.MaxProbes))
+	if err != nil {
 		return err
 	}
+	if engine != nil {
+		if err := engine.CheckCount(total); err != nil {
+			return err
+		}
+	}
 	options := core.Options{Concurrency: cfg.Scan.Concurrency, Rate: cfg.Scan.Rate, Retries: cfg.Scan.Retries, MaxProbes: uint64(cfg.Scan.MaxProbes), Transport: model.Transport(cfg.Scan.Transport)}
+	if engine != nil {
+		options.Scripts, options.ScriptConcurrency = engine, cfg.Scripts.Concurrency
+	}
 	if cfg.Scan.Transport == "tcp" {
 		options.HostRate, options.HostConcurrency = cfg.TCP.HostRate, cfg.TCP.HostConcurrency
 	}
@@ -64,7 +83,7 @@ func runScan(ctx context.Context, cfg config.Config, inputs []string, stdout, st
 	if !cfg.Output.Quiet {
 		outFile, outOK := stdout.(*os.File)
 		errFile, errOK := stderr.(*os.File)
-		interactive := cfg.Output.Format == "console" && outOK && errOK && term.IsTerminal(int(outFile.Fd())) && term.IsTerminal(int(errFile.Fd()))
+		interactive := cfg.Output.Format != "ndjson" && outOK && errOK && term.IsTerminal(int(outFile.Fd())) && term.IsTerminal(int(errFile.Fd()))
 		width := func() int {
 			if errOK {
 				if columns, _, err := term.GetSize(int(errFile.Fd())); err == nil {

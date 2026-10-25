@@ -38,7 +38,7 @@ func TestOpenOnlyServiceOutputAndFile(t *testing.T) {
 	closedPort := closed.Addr().(*net.TCPAddr).Port
 	_ = closed.Close()
 	openPort := listener.Addr().(*net.TCPAddr).Port
-	for _, format := range []string{"console", "ndjson"} {
+	for _, format := range []string{"console", "text", "ndjson"} {
 		t.Run(format, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "results.txt")
 			cmd := NewCommand("test")
@@ -56,7 +56,7 @@ func TestOpenOnlyServiceOutputAndFile(t *testing.T) {
 			if stderr.Len() != 0 {
 				t.Fatalf("quiet output: %s", stderr.String())
 			}
-			if format == "console" {
+			if format != "ndjson" {
 				if strings.Contains(stdout.String(), fmt.Sprintf("%d/tcp", closedPort)) || !strings.Contains(stdout.String(), "ssh") || !strings.Contains(stdout.String(), "1 result rows shown") {
 					t.Fatalf("unexpected console: %s", stdout.String())
 				}

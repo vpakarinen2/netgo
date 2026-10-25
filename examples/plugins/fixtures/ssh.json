@@ -1,0 +1,20 @@
+{
+  "api_version": "netgo.script/v1",
+  "evaluation_time": "2026-10-24T00:00:00Z",
+  "parameters": {},
+  "result": {
+    "target": {"address": "127.0.0.1", "port": 22, "transport": "tcp"},
+    "method": "tcp-connect",
+    "state": "open",
+    "reason": "connected",
+    "observed_at": "2026-10-24T00:00:00Z",
+    "duration_ns": 1000000,
+    "attempts": 1,
+    "service": {
+      "name": "ssh",
+      "product": "OpenSSH",
+      "version": "9.7p1",
+      "evidence": [{"kind": "banner", "value": "SSH-2.0-OpenSSH_9.7p1\r\n"}]
+    }
+  }
+}

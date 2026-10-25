@@ -5,7 +5,10 @@ ifeq ($(OS),Windows_NT)
 BINARY := bin/scan.exe
 endif
 
-.PHONY: build test vet fmt fmt-check check race fuzz clean
+.PHONY: build plugins test vet fmt fmt-check check race fuzz clean
+
+plugins:
+	$(GO) run ./tools/build-plugins
 
 build:
 	$(GO) build -trimpath -ldflags "-X main.version=$(VERSION)" -o $(BINARY) ./cmd/scan
@@ -17,10 +20,10 @@ vet:
 	$(GO) vet ./...
 
 fmt:
-	gofmt -w cmd configs internal pkg
+	gofmt -w cmd configs internal pkg examples tools
 
 fmt-check:
-	@test -z "$$(gofmt -l cmd configs internal pkg)" || (gofmt -l cmd configs internal pkg; exit 1)
+	@test -z "$$(gofmt -l cmd configs internal pkg examples tools)" || (gofmt -l cmd configs internal pkg examples tools; exit 1)
 
 check: fmt-check test vet build
 
