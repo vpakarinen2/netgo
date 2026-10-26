@@ -65,7 +65,7 @@ Run `./bin/scan --help` for all options.
 ./bin/scan localhost -p 22,80,443 --timeout 3s
 
 # Limit connection pressure
-./bin/scan localhost --top-ports 1000 --timeout 3s --tcp-host-rate 20 --tcp-host-concurrency 16
+./bin/scan localhost --top-ports 1000 --tcp-host-rate 20 --tcp-host-concurrency 16
 
 # Probe UDP services
 ./bin/scan localhost --transport udp -p 53,123
